@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+  Starts both ur robots on the surgical platform
+  Set to use ip of simulated robots
+-->
+<launch>
+  <!-- old robot -->
+  <group ns="left_robot">
+    <include file="$(find ur_surgical_platform)/launch/ur5_bringup.launch">
+      <arg name="robot_ip" value="192.168.232.130"/> 
+      <arg name="robot_name" value="left" />
+      <arg name="reverse_port" default="50001"/>
+    </include>
+  </group>
+  <!-- new robot -->
+  <group ns="right_robot">
+    <include file="$(find ur_surgical_platform)/launch/ur5_bringup.launch">
+      <arg name="robot_ip" value="192.168.232.129"/> 
+      <arg name="robot_name" value="right" />
+      <arg name="reverse_port" default="50002"/>
+    </include>
+  </group>
+</launch>
+

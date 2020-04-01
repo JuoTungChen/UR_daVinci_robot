@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format2.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="2">
+  <name>ur_surgical_platform</name>
+  <version>0.1.0</version>
+  <description>Metapackage for everything related to the UR surgical platform</description>
+  <maintainer email="micsc@mmmi.sdu.dk">Michael K. Schmidt</maintainer>
+  <license>???</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>actionlib</depend>
+  <depend>actionlib_msgs</depend>
+  <depend>ur_robot_driver</depend>
+
+  <depend>std_srvs</depend>
+  <exec_depend>ur_description</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+
+
+  <test_depend>rosunit</test_depend>
+</package>
