@@ -1,6 +1,0 @@
-<DHJoint name="Joint0" alpha="0"   a="0"      d="0"     offset="0" type="schilling" />
-<DHJoint name="Joint1" alpha="89.9335" a="0.000230308" d="0.162523" offset="-1.29425e-05" type="schilling" />
-<DHJoint name="Joint2" alpha="0.122125" a="-0.425147" d="0" offset="0.000209665" type="schilling" />
-<DHJoint name="Joint3" alpha="0.139645" a="-0.392078" d="0" offset="3.09484e-05" type="schilling" />
-<DHJoint name="Joint4" alpha="89.7502" a="-6.63988e-05" d="0.133272" offset="-0.000260244" type="schilling" />
-<DHJoint name="Joint5" alpha="-90.0174" a="1.03085e-05" d="0.099463" offset="-3.67019e-05" type="schilling" />

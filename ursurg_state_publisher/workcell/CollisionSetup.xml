@@ -1,9 +1,0 @@
-
-<CollisionSetup>
-    <Exclude>
-    <FramePair first="UR5_Right.Base" second="WPtable"/>
-    <FramePair first="UR5e_Left.Base" second="WPtable"/>
-    <FramePair first="Tool_Left" second="FlangeAdapter_Left"/>
-
-    </Exclude>
-</CollisionSetup>
