@@ -1,0 +1,32 @@
+
+# shaft_length: 0.4670
+# wrist_coupling: 0.6089
+
+joints:
+  rotation:
+    q_min: -260
+    q_max: 260
+    q_home: 0
+  wrist:
+    q_min: -80
+    q_max: 80
+    q_home: 0
+
+
+coupling:
+  # t0 = 1.5     # motor-to-disc transmission (for all motors)
+  # t1 = 1.5632  # roll disc-to-joint transmission
+  # t2 = 1.0186  # wrist disc-to-joint transmission
+  # t3 = 1.2177  # grasper jaws disc-to-joint transmission
+  # w = 0.6089   # coupling between wrist and grasper jaws
+  # servo_to_joint = t0 * np.array([
+  #     [  t1,  0,     0,   0   ],
+  #     [  0,   t2,    0,   0   ],
+  #     [  0,  -t2*w,  t3,  0   ],
+  #     [  0,   t2*w,  0,  -t3  ],
+  # ])
+  servo_to_joint:
+    - [ 2.3448,      0.,          0.,          0.        ]
+    - [ 0.,          1.5279,      0.,          0.        ]
+    - [ 0.,         -0.93033831,  1.82655,     0.        ]
+    - [ 0.,          0.93033831,  0.,         -1.82655   ]

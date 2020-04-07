@@ -1,0 +1,11 @@
+<launch>
+  <node name="eua_calibrate" pkg="eua_control" type="calibrate" output="screen">
+    <rosparam>
+      <!-- port: "/dev/ttyUSB0" -->
+      port: "/dev/ttyACM0"
+      baud_rate: 1000000
+      joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 3, "jaw2": 4}
+    </rosparam>
+  </node>
+</launch>
+
