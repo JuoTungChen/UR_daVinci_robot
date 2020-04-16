@@ -1,21 +1,10 @@
 #!/usr/bin/env python
 
-from eua_control import EUAController
-from sensor_msgs.msg import JointState
-from control_msgs.msg import FollowJointTrajectoryAction
+import eua_control
 import rospy
 
 
 if __name__ == '__main__':
     rospy.init_node('eua_control', disable_signals=True)
-    controller = EUAController()
-
-    pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
-    pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1)
-
-    controller.state_update_callbacks.append(lambda servo_state, joint_state: pub_joint.publish(joint_state))
-    controller.state_update_callbacks.append(lambda servo_state, joint_state: pub_servo.publish(servo_state))
-
-
-
+    controller = eua_control.EUAController()
     controller.run()
