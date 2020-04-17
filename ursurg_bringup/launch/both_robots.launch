@@ -7,7 +7,7 @@
   <!-- new robot -->
   <group ns="left_robot">
     <include file="$(find ur_robot_driver)/launch/ur5e_bringup.launch">
-      <arg name="robot_ip" value="192.168.10.201"/> 
+      <arg name="robot_ip" value="192.168.10.201"/>
       <arg name="reverse_port" value="50001" />
       <arg name="script_sender_port" value="50002" />
       <arg name="kinematics_config" value="$(find ur_surgical_platform)/calibration/left_robot_calibration.yaml" />
@@ -16,7 +16,7 @@
   <!-- old robot -->
   <!--<group ns="right_robot">
     <include file="$(find ur_robot_driver)/launch/ur5_bringup.launch">
-      <arg name="robot_ip" value="192.168.10.202"/> 
+      <arg name="robot_ip" value="192.168.10.202"/>
       <arg name="reverse_port" value="50003" />
       <arg name="script_sender_port" value="50004" />
       <arg name="kinematics_config" value="$(find ur_surgical_platform)/calibration/right_robot_calibration.yaml" />
