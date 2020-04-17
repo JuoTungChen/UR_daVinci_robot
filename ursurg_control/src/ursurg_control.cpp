@@ -78,11 +78,11 @@ public:
         ik_solver_.setCheckJointLimits(true);
         pub_movej = nh_.advertise<ur_control_msgs::MoveJoint>("move_j", 1);
         pub_servoj = nh_.advertise<ur_control_msgs::ServoJoint>("servo_j", 1);
-        subscribers_.push_back(nh_.subscribe("move_j_ik", 1, &Controller::move_l_ik, this));
+        subscribers_.push_back(nh_.subscribe("move_j_ik", 1, &Controller::move_j_ik, this));
         subscribers_.push_back(nh_.subscribe("servo_j_ik", 1, &Controller::servo_j_ik, this));
     }
 
-    void move_l_ik(const geometry_msgs::PoseStamped& m)
+    void move_j_ik(const geometry_msgs::PoseStamped& m)
     {
         auto sols = ik_solver_.solve(convert(m.pose), state_);
         ROS_DEBUG("sols.size() = %lu", sols.size());
