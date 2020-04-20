@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.1)
 project(ursurg_control)
 
-find_package(catkin REQUIRED COMPONENTS roscpp ur_control ur_control_msgs)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  ur_control
+  eua_control
+  ursurg_robwork_model
+)
 find_package(RobWork REQUIRED)
 
 catkin_package()
