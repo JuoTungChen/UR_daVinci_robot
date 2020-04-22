@@ -1,17 +1,30 @@
 <?xml version="1.0"?>
 <launch>
 
-  <include file="$(find ur_robot_driver)/launch/ur_control.launch">
-    <arg name="robot_ip" value="ursim.lan" />
-    <arg name="reverse_port" value="50002" />
-    <!-- <arg name="tf_prefix" default="" doc="tf_prefix used for the robot."/> -->
-    <arg name="controllers" default="joint_state_controller joint_group_pos_controller"/>
-    <!-- <arg name="stopped_controllers" default="joint_group_vel_controller"/> -->
-    <arg name="controller_config_file" default="$(find ursurg_config)/config/ur5e_controllers.yaml" />
-    <arg name="kinematics_config" value="$(find ursurg_config)/calibration/ursim-5.7.0-ur5e.yaml" />
-    <arg name="headless_mode" value="true" />
-    <arg name="use_tool_communication" value="false" />
-  </include>
+  <!-- <group ns="right"> -->
+<!--     <node name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <rosparam>
+        port: "/dev/ttyACM0"
+        baud_rate: 1000000
+        joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 3, "jaw2": 4}
+      </rosparam>
+    </node> -->
+
+  <!-- <arg name="launch_prefix" value="xterm -e gdb -*args" /> -->
+  <arg name="launch_prefix" value="" />
+
+
+  <group ns="right">
+    <node name="ur_control" pkg="ur_control" type="ur_control" launch-prefix="$(arg launch_prefix)" output="screen">
+      <param name="hostname" value="ursim.lan" />
+      <!-- <param name="publish_tcp_pose" value="true" /> -->
+    </node>
+  </group>
+
+  <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" launch-prefix="$(arg launch_prefix)" output="screen">
+    <param name="workcell" value="$(find ursurg_robwork_model)/workcell/ursurg.wc.xml" />
+  </node>
+  <!-- </group> -->
 
 </launch>
 

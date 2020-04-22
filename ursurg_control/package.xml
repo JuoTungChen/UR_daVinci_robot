@@ -11,6 +11,7 @@
   <depend>roscpp</depend>
   <depend>ur_control</depend>
   <depend>eua_control</depend>
+  <depend>ursurg_common</depend>
   <depend>ursurg_robwork_model</depend>
 </package>
 

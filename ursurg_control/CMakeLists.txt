@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   ur_control
   eua_control
+  ursurg_common
   ursurg_robwork_model
 )
 find_package(RobWork REQUIRED)
@@ -12,7 +13,7 @@ find_package(RobWork REQUIRED)
 catkin_package()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
   ${catkin_INCLUDE_DIRS}

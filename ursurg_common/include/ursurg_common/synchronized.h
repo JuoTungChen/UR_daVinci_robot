@@ -6,14 +6,25 @@ template <typename T>
 class synchronized
 {
 public:
-    template <typename... Args>
-    explicit synchronized(Args&&... args)
-        : value_(std::forward<Args>(args)...)
+    synchronized() = default;
+
+    explicit synchronized(const T& value)
+        : value_(value)
     {
     }
 
-    synchronized(const synchronized&) = delete;
+    synchronized& operator=(const T& value)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        value_ = value;
+        return *this;
+    }
+
+    // No move/copy from other synchronized types
     synchronized& operator=(const synchronized&) = delete;
+    synchronized& operator=(synchronized&&) = delete;
+    synchronized(const synchronized&) = delete;
+    synchronized(synchronized&&) = delete;
 
     operator T() const
     {
@@ -25,7 +36,7 @@ public:
     auto withLock(F&& f)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        std::forward<F>(f)(value_);
+        return std::forward<F>(f)(value_);
     }
 
 private:
