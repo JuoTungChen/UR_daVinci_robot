@@ -1,5 +1,4 @@
-#ifndef HDPLUSPLUS_H
-#define HDPLUSPLUS_H
+#pragma once
 
 #include <HD/hd.h>
 
@@ -23,25 +22,30 @@ public:
     Device(Device&& other);
     Device& operator=(Device&& other);
 
+    void set_force_enabled(bool enable);
+
 public:
     HHD handle;
+    std::string name;
 };
 
 class Scheduler
 {
-public:
     using callback_t = std::function<HDCallbackCode()>;
 
-    Scheduler(unsigned rate);
+public:
+    Scheduler();
     ~Scheduler();
 
+    void set_rate(unsigned scheduler_rate_hz);
     void start();
+    void stop();
 
     template<typename F>
     HDSchedulerHandle schedule_asynchronous(F&& callback,
                                             HDushort priority = HD_DEFAULT_SCHEDULER_PRIORITY)
     {
-        // Pass pointer to callback as "userdata" and call it from an
+        // Pass pointer to callback as "user data" and call it from an
         // intermediate captureless lambda
         callbacks_.push_back(std::move(callback));
         handles_.push_back(
@@ -56,7 +60,7 @@ public:
     }
 
     template<typename F>
-    void schedule_synchronous(F callback,
+    void schedule_synchronous(F&& callback,
                               HDushort priority = HD_DEFAULT_SCHEDULER_PRIORITY)
     {
         hdScheduleSynchronous(
@@ -69,23 +73,21 @@ public:
     }
 
 public:
-    int rate;
+    unsigned rate_hz;
 
 private:
     std::list<callback_t> callbacks_;
     std::list<HDSchedulerHandle> handles_;
 };
 
-class Frame
+class ScopedFrame
 {
 public:
-    explicit Frame(HHD handle);
-    ~Frame();
+    explicit ScopedFrame(HHD handle);
+    ~ScopedFrame();
 
 private:
     HHD handle_;
 };
 
 } // namespace hd
-
-#endif // HDPLUSPLUS_H

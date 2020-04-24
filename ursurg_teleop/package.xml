@@ -9,5 +9,8 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>eigen</build_depend>
+  <depend>geometry_msgs</depend>
   <depend>roscpp</depend>
+  <depend>ur_control</depend>
+  <depend>ursurg_common</depend>
 </package>

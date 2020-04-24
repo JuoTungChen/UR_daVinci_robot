@@ -1,17 +1,27 @@
 #include "hd++.h"
 
+#include <iomanip>
+#include <sstream>
+
 namespace hd {
 
 void error_check()
 {
     auto e = hdGetError();
 
-    if (e.errorCode != HD_SUCCESS)
-        throw std::runtime_error(hdGetErrorString(e.errorCode));
+    if (e.errorCode != HD_SUCCESS) {
+        std::stringstream ss;
+        ss << hdGetErrorString(e.errorCode)
+           << " ("
+           << "0x" << std::hex << std::setfill('0') << std::setw(4) << e.errorCode
+           << ")";
+        throw std::runtime_error(ss.str());
+    }
 }
 
 Device::Device(const std::string& name)
     : handle(HD_INVALID_HANDLE)
+    , name(name)
 {
     handle = hdInitDevice(name.c_str());
     error_check();
@@ -25,6 +35,7 @@ Device::~Device()
 
 Device::Device(Device&& other)
     : handle(std::move(other.handle))
+    , name(std::move(other.name))
 {
     other.handle = HD_INVALID_HANDLE;
 }
@@ -32,27 +43,40 @@ Device::Device(Device&& other)
 Device& Device::operator=(Device&& other)
 {
     handle = std::move(other.handle);
+    name = std::move(other.name);
     other.handle = HD_INVALID_HANDLE;
     return *this;
 }
 
-Scheduler::Scheduler(unsigned rate)
-    : rate(-1)
+void Device::set_force_enabled(bool enable)
 {
-    if (rate != 500 && rate != 1000)
-        throw std::runtime_error("Scheduler rate must be either 500 or 1000");
-
-    hdSetSchedulerRate(rate);
+    hdMakeCurrentDevice(handle);
     error_check();
-    this->rate = rate;
+
+    if (enable)
+        hdEnable(HD_FORCE_OUTPUT);
+    else
+        hdDisable(HD_FORCE_OUTPUT);
+}
+
+Scheduler::Scheduler()
+    : rate_hz(0)
+{
 }
 
 Scheduler::~Scheduler()
 {
     hdStopScheduler();
 
-    for (auto handle : handles_)
-        hdUnschedule(handle);
+    for (auto h : handles_)
+        hdUnschedule(h);
+}
+
+void Scheduler::set_rate(unsigned scheduler_rate_hz)
+{
+    hdSetSchedulerRate(scheduler_rate_hz);
+    error_check();
+    rate_hz = scheduler_rate_hz;
 }
 
 void Scheduler::start()
@@ -61,14 +85,20 @@ void Scheduler::start()
     error_check();
 }
 
-Frame::Frame(HHD handle)
+void Scheduler::stop()
+{
+    hdStopScheduler();
+    error_check();
+}
+
+ScopedFrame::ScopedFrame(HHD handle)
     : handle_(handle)
 {
     hdBeginFrame(handle_);
     error_check();
 }
 
-Frame::~Frame()
+ScopedFrame::~ScopedFrame()
 {
     hdEndFrame(handle_);
     error_check();
