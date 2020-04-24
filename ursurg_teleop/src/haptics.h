@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common.h"
 #include "hd++.h"
 
 #include <ursurg_common/math.h>
 #include <ursurg_common/synchronized.h>
+#include <ursurg_common/pair.h>
 
 #include <Eigen/Geometry>
 
@@ -47,13 +47,13 @@ public:
                                 const std::string& name_right,
                                 unsigned scheduler_rate_hz);
 
-    HapticsState currentState(Index idx) const;
+    HapticsState currentState(PairIndex idx) const;
 
 private:
-    HDCallbackCode updateDeviceState(Index idx);
+    HDCallbackCode updateDeviceState(PairIndex idx);
 
 private:
-    std::array<hd::Device, 2> devices_;
+    Pair<hd::Device> devices_;
     hd::Scheduler scheduler_;
-    std::array<synchronized<HapticsState>, 2> states_;
+    Pair<synchronized<HapticsState>> states_;
 };

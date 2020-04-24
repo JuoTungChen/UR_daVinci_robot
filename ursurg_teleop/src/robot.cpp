@@ -4,22 +4,22 @@
 
 #include <ursurg_common/rosutility.h>
 
-RobotStateReader::RobotStateReader(ros::NodeHandle& nh_left, ros::NodeHandle& nh_right)
+RobotStateReader::RobotStateReader(Pair<ros::NodeHandle>& nh)
 {
     // TODO should really subscribe to the current TCP "target" pose
-    sub_[L] = mksub<geometry_msgs::PoseStamped>(
-        nh_left, "pose_tcp_current", 1, [this](const auto& m) {
-            state_[L].tf = convert(m.pose);
+    sub_[LEFT] = mksub<geometry_msgs::PoseStamped>(
+        nh.left, "pose_tcp_current", 1, [this](const auto& m) {
+            state_[LEFT].tf = convert(m.pose);
         },
         ros::TransportHints().tcpNoDelay());
-    sub_[R] = mksub<geometry_msgs::PoseStamped>(
-        nh_right, "pose_tcp_current", 1, [this](const auto& m) {
-            state_[R].tf = convert(m.pose);
+    sub_[RIGHT] = mksub<geometry_msgs::PoseStamped>(
+        nh.right, "pose_tcp_current", 1, [this](const auto& m) {
+            state_[RIGHT].tf = convert(m.pose);
         },
         ros::TransportHints().tcpNoDelay());
 }
 
-RobotState RobotStateReader::currentState(Index idx)
+RobotState RobotStateReader::currentState(PairIndex idx)
 {
     return state_[idx];
 }

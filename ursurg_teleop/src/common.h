@@ -4,12 +4,6 @@
 
 #include <Eigen/Geometry>
 
-enum Index : unsigned
-{
-    L = 0,
-    R,
-};
-
 inline Eigen::Isometry3d convert(const geometry_msgs::Pose& m)
 {
     return Eigen::Translation3d(m.position.x, m.position.y, m.position.z)

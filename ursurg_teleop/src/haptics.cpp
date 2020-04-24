@@ -24,22 +24,21 @@ HapticsStateReader::HapticsStateReader(const std::string& name_left,
                                        unsigned scheduler_rate_hz)
     : devices_{name_left, name_right}
 {
-    devices_[L].set_force_enabled(false);
-    devices_[R].set_force_enabled(false);
+    devices_.apply([](auto& dev) {dev.set_force_enabled(false); });
 
-    scheduler_.schedule_asynchronous([this]() { return updateDeviceState(L); }, HD_MAX_SCHEDULER_PRIORITY);
-    scheduler_.schedule_asynchronous([this]() { return updateDeviceState(R); }, HD_MAX_SCHEDULER_PRIORITY);
+    scheduler_.schedule_asynchronous([this]() { return updateDeviceState(LEFT); }, HD_MAX_SCHEDULER_PRIORITY);
+    scheduler_.schedule_asynchronous([this]() { return updateDeviceState(RIGHT); }, HD_MAX_SCHEDULER_PRIORITY);
 
     scheduler_.set_rate(scheduler_rate_hz);
     scheduler_.start();
 }
 
-HapticsState HapticsStateReader::currentState(Index idx) const
+HapticsState HapticsStateReader::currentState(PairIndex idx) const
 {
     return states_[idx];
 }
 
-HDCallbackCode HapticsStateReader::updateDeviceState(Index idx)
+HDCallbackCode HapticsStateReader::updateDeviceState(PairIndex idx)
 {
     states_[idx].withLock([&](auto& s) {
         hd::ScopedFrame frame(devices_[idx].handle);
@@ -60,8 +59,8 @@ HDCallbackCode HapticsStateReader::updateDeviceState(Index idx)
         s.button_state.white = (buttons & HD_DEVICE_BUTTON_2) ? ButtonState::PRESSED : ButtonState::RELEASED;
     });
 
-    //    if (!ros::ok())
-    //        return HD_CALLBACK_DONE;
+    //if (!ros::ok())
+    //    return HD_CALLBACK_DONE;
 
     return HD_CALLBACK_CONTINUE;
 }

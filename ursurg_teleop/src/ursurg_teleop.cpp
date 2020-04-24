@@ -4,6 +4,7 @@
 #include "robot.h"
 
 #include <ursurg_common/math.h>
+#include <ursurg_common/pair.h>
 #include <ursurg_common/synchronized.h>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -64,6 +65,19 @@ public:
         t_base_hd = t_hd_base.inverse();
     }
 
+    TeleopController(TeleopController&& other)
+        : get_haptics_state_(std::move(other.get_haptics_state_))
+        , get_robot_state_(std::move(other.get_robot_state_))
+        , clutched_(other.clutched_.load())
+        , grasp_rate_(other.grasp_rate_)
+        , translation_scaling_factor_(other.translation_scaling_factor_)
+        , t_hd_base(std::move(other.t_hd_base))
+        , t_base_hd(std::move(other.t_base_hd))
+        , robot_state_desired_(std::move(other.robot_state_desired_))
+        , haptics_state_curr_(std::move(other.haptics_state_curr_))
+        , haptics_state_prev_(std::move(other.haptics_state_prev_))
+    {}
+
     void engage()
     {
         haptics_state_curr_ = get_haptics_state_();
@@ -81,7 +95,7 @@ public:
         if (!clutched_)
             return {};
 
-        haptics_state_prev_ = haptics_state_curr_;
+        haptics_state_prev_ = std::move(haptics_state_curr_);
         haptics_state_curr_ = get_haptics_state_();
 
         HapticsStateDiff diff = haptics_state_curr_ - haptics_state_prev_;
@@ -141,45 +155,41 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
-    ros::NodeHandle nh_left(nh, nh_priv.param("ns_left", "left"s));
-    ros::NodeHandle nh_right(nh, nh_priv.param("ns_right", "right"s));
+    Pair<ros::NodeHandle> nh_rl{nh_priv.param("ns_left", "left"s), nh_priv.param("ns_right", "right"s)};
 
     HapticsStateReader haptics(nh_priv.param("device_name_left", "left"s),
                                nh_priv.param("device_name_right", "right"s),
                                nh_priv.param("scheduler_rate", 500));
 
-    RobotStateReader robot(nh_left, nh_right);
+    RobotStateReader robot(nh_rl);
 
-    ros::Publisher pub_servo_left = nh_left.advertise<geometry_msgs::PoseStamped>("servo_j_ik", 1);
-    ros::Publisher pub_servo_right = nh_right.advertise<geometry_msgs::PoseStamped>("servo_j_ik", 1);
+    auto pub_servo = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("servo_j_ik", 1); });
+    auto pub_haptics = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("pose_haptics_current", 1); });
 
-    ros::Publisher pub_haptics_left = nh_left.advertise<geometry_msgs::PoseStamped>("pose_haptics_current", 1);
-    ros::Publisher pub_haptics_right = nh_right.advertise<geometry_msgs::PoseStamped>("pose_haptics_current", 1);
-
-    TeleopController ctrl_left([&]() { return haptics.currentState(L); },
-                               [&]() { return robot.currentState(L); },
-                               nh_priv.param("grasp_rate", math::pi / 4),
-                               nh_priv.param("translation_scaling_factor", 1.0));
-    TeleopController ctrl_right([&]() { return haptics.currentState(R); },
-                                [&]() { return robot.currentState(R); },
-                                nh_priv.param("grasp_rate", math::pi / 4),
-                                nh_priv.param("translation_scaling_factor", 1.0));
+    Pair<TeleopController> ctrl({[&]() { return haptics.currentState(LEFT); },
+                                 [&]() { return robot.currentState(LEFT); },
+                                 nh_priv.param("grasp_rate", math::pi / 4),
+                                 nh_priv.param("translation_scaling_factor", 1.0)},
+                                {[&]() { return haptics.currentState(RIGHT); },
+                                 [&]() { return robot.currentState(RIGHT); },
+                                 nh_priv.param("grasp_rate", math::pi / 4),
+                                 nh_priv.param("translation_scaling_factor", 1.0)});
 
     ClutchWidget clutch_widget;
 
     QObject::connect(&clutch_widget, &ClutchWidget::engaged, [&]() {
-        ctrl_right.engage();
-        ctrl_left.engage();
+        ctrl.right.engage();
+        ctrl.left.engage();
     });
     QObject::connect(&clutch_widget, &ClutchWidget::disengaged, [&]() {
-        ctrl_left.disengage();
-        ctrl_right.disengage();
+        ctrl.left.disengage();
+        ctrl.right.disengage();
     });
 
     std::list<ros::SteadyTimer> timers{
         nh.createSteadyTimer(ros::WallDuration(1.0 / 500),
                              [&](const auto&) {
-                                 auto ret = ctrl_left.step();
+                                 auto ret = ctrl.left.step();
 
                                  if (!ret)
                                      return;
@@ -187,11 +197,11 @@ int main(int argc, char* argv[])
                                  geometry_msgs::PoseStamped m;
                                  m.header.stamp = ros::Time::now();
                                  m.pose = convert(*ret);
-                                 pub_servo_left.publish(m);
+                                 pub_servo.left.publish(m);
                              }),
         nh.createSteadyTimer(ros::WallDuration(1.0 / 125),
                              [&](const auto&) {
-                                 auto ret = ctrl_right.step();
+                                 auto ret = ctrl.right.step();
 
                                  if (!ret)
                                      return;
@@ -199,7 +209,7 @@ int main(int argc, char* argv[])
                                  geometry_msgs::PoseStamped m;
                                  m.header.stamp = ros::Time::now();
                                  m.pose = convert(*ret);
-                                 pub_servo_right.publish(m);
+                                 pub_servo.right.publish(m);
                              }),
     };
 
@@ -209,16 +219,16 @@ int main(int argc, char* argv[])
                                  [&](const auto&) {
                                      geometry_msgs::PoseStamped m;
                                      m.header.stamp = ros::Time::now();
-                                     m.pose = convert(haptics.currentState(L).tf);
-                                     pub_haptics_left.publish(m);
+                                     m.pose = convert(haptics.currentState(LEFT).tf);
+                                     pub_haptics.left.publish(m);
                                  }));
         timers.push_back(
             nh.createSteadyTimer(ros::WallDuration(1.0 / 50),
                                  [&](const auto&) {
                                      geometry_msgs::PoseStamped m;
                                      m.header.stamp = ros::Time::now();
-                                     m.pose = convert(haptics.currentState(R).tf);
-                                     pub_haptics_right.publish(m);
+                                     m.pose = convert(haptics.currentState(RIGHT).tf);
+                                     pub_haptics.right.publish(m);
                                  }));
     }
 
