@@ -40,16 +40,18 @@ public:
         : device_(device)
         , sync_state_(sync_state)
         , nh_(nh)
-        , pub_pose_(nh_.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 8))
+        , pub_pose_(nh_.advertise<geometry_msgs::PoseStamped>("pose_tcp_current", 1))
         , pub_movej(nh_.advertise<sensor_msgs::JointState>("move_j", 1))
         , pub_servoj(nh_.advertise<sensor_msgs::JointState>("servo_j", 1))
-        , sub_joint_state_(nh_.subscribe("joint_states", 8, &StatePublisher::do_fk, this))
+        , sub_joint_state_(nh_.subscribe("joint_states", 1, &StatePublisher::do_fk, this))
     {
     }
 
     void do_fk(const sensor_msgs::JointState& m)
     {
-        sync_state_.withLock([&](auto& state) { device_->setQ(m.position, state); });
+        sync_state_.withLock([&](auto& state) {
+            device_->setQ(m.position, state);
+        });
 
         geometry_msgs::PoseStamped y;
         y.header.stamp = ros::Time::now();
