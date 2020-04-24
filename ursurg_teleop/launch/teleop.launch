@@ -1,0 +1,17 @@
+<launch>
+  <node name="footpedal" pkg="ursurg_teleop" type="footpedal" output="screen" />
+
+  <node name="haptics_differential" pkg="ursurg_teleop" type="haptics_differential" output="screen">
+    <param name="publish_rate" value="250" />
+  </node>
+
+  <node ns="left" name="ur_teleop" pkg="ursurg_teleop" type="ur_teleop" output="screen">
+    <param name="robot_ip" value="192.168.10.201" />
+    <remap from="clutch" to="/clutch"/>
+  </node>
+
+  <node ns="right" name="ur_teleop" pkg="ursurg_teleop" type="ur_teleop" output="screen">
+    <param name="robot_ip" value="192.168.10.202" />
+    <remap from="clutch" to="/clutch"/>
+  </node>
+</launch>

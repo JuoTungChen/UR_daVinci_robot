@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ursurg_teleop</name>
+  <version>0.1.0</version>
+  <description>The ursurg_teleop package</description>
+  <maintainer email="kils@mmmi.sdu.dk">Kim Lindberg Schwaner</maintainer>
+  <license>BSD</license>
+  <author email="kils@mmmi.sdu.dk">Kim Lindberg Schwaner</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>eigen</build_depend>
+  <depend>roscpp</depend>
+</package>
