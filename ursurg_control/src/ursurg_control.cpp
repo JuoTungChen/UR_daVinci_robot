@@ -1,5 +1,3 @@
-#include <ursurg_common/synchronized.h>
-
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
@@ -36,9 +34,9 @@ class StatePublisher
 public:
     StatePublisher(const ros::NodeHandle& nh,
                    const rw::models::SerialDevice::Ptr& device,
-                   synchronized<rw::kinematics::State>& sync_state)
+                   rw::kinematics::State& state)
         : device_(device)
-        , sync_state_(sync_state)
+        , state_(state)
         , nh_(nh)
         , pub_pose_(nh_.advertise<geometry_msgs::PoseStamped>("pose_tcp_current", 1))
         , pub_movej(nh_.advertise<sensor_msgs::JointState>("move_j", 1))
@@ -49,19 +47,17 @@ public:
 
     void do_fk(const sensor_msgs::JointState& m)
     {
-        sync_state_.withLock([&](auto& state) {
-            device_->setQ(m.position, state);
-        });
+        device_->setQ(m.position, state_);
 
         geometry_msgs::PoseStamped y;
         y.header.stamp = ros::Time::now();
-        y.pose = convert(device_->baseTend(sync_state_));
+        y.pose = convert(device_->baseTend(state_));
         pub_pose_.publish(y);
     }
 
 private:
     rw::models::SerialDevice::Ptr device_;
-    synchronized<rw::kinematics::State>& sync_state_;
+    rw::kinematics::State& state_;
 
     ros::NodeHandle nh_;
     ros::Publisher pub_pose_;
@@ -75,10 +71,10 @@ class Controller
 public:
     Controller(const ros::NodeHandle& nh,
                const rw::models::SerialDevice::Ptr& device,
-               synchronized<rw::kinematics::State>& sync_state)
+               rw::kinematics::State& state)
         : device_(device)
-        , sync_state_(sync_state)
-        , ik_solver_(device_, sync_state_)
+        , state_(state)
+        , ik_solver_(device_, state_)
         , nh_(nh)
     {
         ik_solver_.setCheckJointLimits(true);
@@ -90,7 +86,7 @@ public:
 
     void move_j_ik(const geometry_msgs::PoseStamped& m)
     {
-        auto sols = ik_solver_.solve(convert(m.pose), sync_state_);
+        auto sols = ik_solver_.solve(convert(m.pose), state_);
         ROS_DEBUG("sols.size() = %lu", sols.size());
 
         if (sols.empty()) {
@@ -106,7 +102,7 @@ public:
 
     void servo_j_ik(const geometry_msgs::PoseStamped& m)
     {
-        auto sols = ik_solver_.solve(convert(m.pose), sync_state_);
+        auto sols = ik_solver_.solve(convert(m.pose), state_);
         ROS_DEBUG("sols.size() = %lu", sols.size());
 
         if (sols.empty()) {
@@ -122,7 +118,7 @@ public:
 
 private:
     rw::models::SerialDevice::Ptr device_;
-    synchronized<rw::kinematics::State>& sync_state_;
+    rw::kinematics::State& state_;
     rw::invkin::JacobianIKSolver ik_solver_;
 
     ros::NodeHandle nh_;
@@ -140,10 +136,9 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
-    auto workcell_path = nh_priv.param("workcell", ""s);
-    auto workcell = rw::loaders::WorkCellLoader::Factory::load(workcell_path);
+    auto workcell = rw::loaders::WorkCellLoader::Factory::load(nh_priv.param("workcell", ""s));
 
-    synchronized<rw::kinematics::State> sync_state(workcell->getDefaultState());
+    rw::kinematics::State sync_state = workcell->getDefaultState();
 
     ros::NodeHandle nh_left(nh, "left");
     auto device_left = workcell->findDevice<rw::models::SerialDevice>("UR5e_Left");
