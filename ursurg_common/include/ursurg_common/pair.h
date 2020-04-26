@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-enum PairIndex : std::size_t
+enum PairIndex : unsigned
 {
     LEFT = 0,
     RIGHT = 1,
@@ -49,7 +49,7 @@ struct Pair
     Pair<T>& operator=(Pair<T>&&) = default;
 
     // Get left/right item by index
-    T& operator[](std::size_t idx)
+    T& operator[](unsigned idx)
     {
         switch (idx) {
         case PairIndex::LEFT:
@@ -61,7 +61,7 @@ struct Pair
         }
     }
 
-    const T& operator[](std::size_t idx) const
+    const T& operator[](unsigned idx) const
     {
         switch (idx) {
         case PairIndex::LEFT:
@@ -95,7 +95,7 @@ struct Pair
     }
 
     // Apply f to left and right
-    template<typename F, typename R = std::result_of_t<F && (T&)>>
+    template<typename F, typename R = std::result_of_t<F&&(T&)>>
     std::enable_if_t<std::is_void_v<R>, void> apply(F&& f)
     {
         std::forward<F>(f)(left);
@@ -103,9 +103,15 @@ struct Pair
     }
 
     // Apply f to left and right and return the result of each call as a Pair
-    template<typename F, typename R = std::result_of_t<F && (T&)>>
+    template<typename F, typename R = std::result_of_t<F&&(T&)>>
     constexpr std::enable_if_t<!std::is_void_v<R>, Pair<R>> apply(F&& f)
     {
         return {std::forward<F>(f)(left), std::forward<F>(f)(right)};
     }
 };
+
+template<typename T>
+constexpr Pair<T> make_pair(T&& x, T&& y)
+{
+    return {std::forward<T>(x), std::forward<T>(y)};
+}

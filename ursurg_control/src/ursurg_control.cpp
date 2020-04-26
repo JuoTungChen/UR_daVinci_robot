@@ -1,3 +1,5 @@
+#include <ursurg_common/pair.h>
+
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
@@ -138,17 +140,16 @@ int main(int argc, char* argv[])
 
     auto workcell = rw::loaders::WorkCellLoader::Factory::load(nh_priv.param("workcell", ""s));
 
-    rw::kinematics::State sync_state = workcell->getDefaultState();
+    auto state = workcell->getDefaultState();
 
-    ros::NodeHandle nh_left(nh, "left");
-    auto device_left = workcell->findDevice<rw::models::SerialDevice>("UR5e_Left");
-    StatePublisher pub_state_left(nh_left, device_left, sync_state);
-    Controller ctrl_left(nh_left, device_left, sync_state);
-
-    ros::NodeHandle nh_right(nh, "right");
-    auto device_right = workcell->findDevice<rw::models::SerialDevice>("UR5_Right");
-    StatePublisher pub_state_right(nh_right, device_right, sync_state);
-    Controller ctrl_right(nh_right, device_right, sync_state);
+    auto device = make_pair(
+        workcell->findDevice<rw::models::SerialDevice>("UR5e_Left"),
+        workcell->findDevice<rw::models::SerialDevice>("UR5_Right"));
+    Pair<ros::NodeHandle> nh_lr({nh, "left"}, {nh, "right"});
+    Pair<StatePublisher> pub_state({nh_lr.left, device.left, state},
+                                   {nh_lr.right, device.right, state});
+    Pair<Controller> controller({nh_lr.left, device.left, state},
+                                {nh_lr.right, device.right, state});
 
     ros::spin();
 
