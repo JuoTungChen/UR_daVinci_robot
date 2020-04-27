@@ -75,7 +75,7 @@ public:
                const std::shared_ptr<rw::kinematics::State>& state)
         : device_(device)
         , state_(state)
-        , ik_solver_(std::make_unique<rw::invkin::JacobianIKSolver>(device_, state_))
+        , ik_solver_(std::make_unique<rw::invkin::JacobianIKSolver>(device_, *state_))
         , nh_(nh)
     {
         ik_solver_->setCheckJointLimits(true);
