@@ -1,4 +1,4 @@
-#include <ursurg_common/pair.h>
+#include <ursurg_common/rosutility.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
@@ -9,6 +9,8 @@
 #include <rw/models/WorkCell.hpp>
 
 #include <ros/ros.h>
+
+#include <optional>
 
 geometry_msgs::Pose convert(const rw::math::Transform3D<double>& tf)
 {
@@ -31,103 +33,6 @@ rw::math::Transform3D<double> convert(const geometry_msgs::Pose& m)
     return {p, q.toRotation3D()};
 }
 
-class StatePublisher
-{
-public:
-    StatePublisher(const ros::NodeHandle& nh,
-                   const rw::models::SerialDevice::Ptr& device,
-                   const std::shared_ptr<rw::kinematics::State>& state)
-        : device_(device)
-        , state_(state)
-        , nh_(nh)
-        , pub_pose_(nh_.advertise<geometry_msgs::PoseStamped>("pose_tcp_current", 1))
-        , pub_movej(nh_.advertise<sensor_msgs::JointState>("move_j", 1))
-        , pub_servoj(nh_.advertise<sensor_msgs::JointState>("servo_j", 1))
-        , sub_joint_state_(nh_.subscribe("joint_states", 1, &StatePublisher::do_fk, this))
-    {
-    }
-
-    void do_fk(const sensor_msgs::JointState& m)
-    {
-        device_->setQ(m.position, *state_);
-
-        geometry_msgs::PoseStamped y;
-        y.header.stamp = ros::Time::now();
-        y.pose = convert(device_->baseTend(*state_));
-        pub_pose_.publish(y);
-    }
-
-private:
-    rw::models::SerialDevice::Ptr device_;
-    std::shared_ptr<rw::kinematics::State> state_;
-    ros::NodeHandle nh_;
-    ros::Publisher pub_pose_;
-    ros::Publisher pub_movej;
-    ros::Publisher pub_servoj;
-    ros::Subscriber sub_joint_state_;
-};
-
-class Controller
-{
-public:
-    Controller(const ros::NodeHandle& nh,
-               const rw::models::SerialDevice::Ptr& device,
-               const std::shared_ptr<rw::kinematics::State>& state)
-        : device_(device)
-        , state_(state)
-        , ik_solver_(std::make_unique<rw::invkin::JacobianIKSolver>(device_, *state_))
-        , nh_(nh)
-    {
-        ik_solver_->setCheckJointLimits(true);
-        pub_movej = nh_.advertise<sensor_msgs::JointState>("move_j", 1);
-        pub_servoj = nh_.advertise<sensor_msgs::JointState>("servo_j", 1);
-        subscribers_.push_back(nh_.subscribe("move_j_ik", 1, &Controller::move_j_ik, this));
-        subscribers_.push_back(nh_.subscribe("servo_j_ik", 1, &Controller::servo_j_ik, this));
-    }
-
-    void move_j_ik(const geometry_msgs::PoseStamped& m)
-    {
-        auto sols = ik_solver_->solve(convert(m.pose), *state_);
-        ROS_DEBUG("sols.size() = %lu", sols.size());
-
-        if (sols.empty()) {
-            ROS_WARN("No IK solutions");
-            return;
-        }
-
-        sensor_msgs::JointState s;
-        s.header.stamp = ros::Time::now();
-        s.position = sols.front().toStdVector();
-        pub_movej.publish(s);
-    }
-
-    void servo_j_ik(const geometry_msgs::PoseStamped& m)
-    {
-        auto sols = ik_solver_->solve(convert(m.pose), *state_);
-        ROS_DEBUG("sols.size() = %lu", sols.size());
-
-        if (sols.empty()) {
-            ROS_WARN("No IK solutions");
-            return;
-        }
-
-        sensor_msgs::JointState s;
-        s.header.stamp = ros::Time::now();
-        s.position = sols.front().toStdVector();
-        pub_servoj.publish(s);
-    }
-
-private:
-    rw::models::SerialDevice::Ptr device_;
-    std::shared_ptr<rw::kinematics::State> state_;
-    std::unique_ptr<rw::invkin::JacobianIKSolver> ik_solver_; // Has private copy ctor
-    ros::NodeHandle nh_;
-    ros::Publisher pub_pose_;
-    ros::Publisher pub_movej;
-    ros::Publisher pub_servoj;
-    std::list<ros::Subscriber> subscribers_;
-};
-
 int main(int argc, char* argv[])
 {
     using namespace std::string_literals;
@@ -136,16 +41,74 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
-    auto workcell = rw::loaders::WorkCellLoader::Factory::load(nh_priv.param("workcell", ""s));
-    auto state = std::make_shared<rw::kinematics::State>(workcell->getDefaultState());
-    auto device = make_pair(
-        workcell->findDevice<rw::models::SerialDevice>("UR5e_Left"),
-        workcell->findDevice<rw::models::SerialDevice>("UR5_Right"));
-    Pair<ros::NodeHandle> nh_lr({nh, "left"}, {nh, "right"});
-    Pair<StatePublisher> pub_state({nh_lr.left, device.left, state},
-                                   {nh_lr.right, device.right, state});
-    Pair<Controller> controller({nh_lr.left, device.left, state},
-                                {nh_lr.right, device.right, state});
+    auto workcell_path = nh_priv.param("workcell", ""s);
+    auto device_name = nh_priv.param("device", ""s);
+
+    auto workcell = rw::loaders::WorkCellLoader::Factory::load(workcell_path);
+
+    if (!workcell)
+        throw std::runtime_error("Workcell '" + workcell_path + "' not found");
+
+    auto device = workcell->findDevice<rw::models::SerialDevice>(device_name);
+
+    if (!device)
+        throw std::runtime_error("Device '" + device_name + "' not found");
+
+    // Accessing 'state' does not have to be synchronized when processing ROS
+    // callbacks from only a single thread
+    auto state = workcell->getDefaultState();
+
+    rw::invkin::JacobianIKSolver ik_solver(device, state);
+    //ik_solver.setCheckJointLimits(true);
+
+    auto solve_ik = [&](rw::math::Transform3D<double> tf) -> std::optional<std::vector<double>> {
+        auto solutions = ik_solver.solve(tf, state);
+
+        if (solutions.empty()) {
+            ROS_WARN("No IK solutions");
+            return {};
+        }
+
+        // JacobianIKSolver returns only one solution
+        return solutions.front().toStdVector();
+    };
+
+    auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("pose_tcp_current", 1);
+    auto pub_movej = nh.advertise<sensor_msgs::JointState>("move_j", 1);
+    auto pub_servoj = nh.advertise<sensor_msgs::JointState>("servo_j", 1);
+
+    std::list<ros::Subscriber> subscribers{
+        mksub<sensor_msgs::JointState>(nh, "joint_states", 1, [&](const auto& m) {
+            device->setQ(m.position, state);
+
+            geometry_msgs::PoseStamped s;
+            s.header.stamp = ros::Time::now();
+            s.pose = convert(device->baseTend(state));
+            pub_pose.publish(s);
+        }),
+        mksub<geometry_msgs::PoseStamped>(nh, "move_j_ik", 1, [&](const auto& m) {
+            auto q = solve_ik(convert(m.pose));
+
+            if (!q)
+                return;
+
+            sensor_msgs::JointState s;
+            s.header.stamp = ros::Time::now();
+            s.position = std::move(*q);
+            pub_movej.publish(s);
+        }),
+        mksub<geometry_msgs::PoseStamped>(nh, "servo_j_ik", 1, [&](const auto& m) {
+            auto q = solve_ik(convert(m.pose));
+
+            if (!q)
+                return;
+
+            sensor_msgs::JointState s;
+            s.header.stamp = ros::Time::now();
+            s.position = std::move(*q);
+            pub_servoj.publish(s);
+        }),
+    };
 
     ros::spin();
 

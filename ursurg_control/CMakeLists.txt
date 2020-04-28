@@ -3,8 +3,6 @@ project(ursurg_control)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  ur_control
-  eua_control
   ursurg_common
   ursurg_robwork_model
 )
