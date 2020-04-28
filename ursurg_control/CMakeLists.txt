@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   ursurg_common
   ursurg_robwork_model
 )
-find_package(RobWork REQUIRED)
+find_package(RobWork REQUIRED PATHS "$ENV{RW_ROOT}")
 
 catkin_package()
 
