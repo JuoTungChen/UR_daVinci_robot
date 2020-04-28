@@ -98,10 +98,20 @@ public:
         haptics_state_prev_ = std::move(haptics_state_curr_);
         haptics_state_curr_ = get_haptics_state_();
 
-        HapticsStateDiff diff = haptics_state_curr_ - haptics_state_prev_;
+        auto dt = haptics_state_curr_.stamp - haptics_state_prev_.stamp;
 
-        Eigen::Isometry3d t_incr = t_base_hd * diff.tf * t_hd_base;
+        // Transform difference in haptics device coordinates
+        Eigen::Isometry3d t_incr = Eigen::Isometry3d::Identity();
+        t_incr.translation() = haptics_state_curr_.tf.translation() - haptics_state_prev_.tf.translation();
+        t_incr.linear() = haptics_state_prev_.tf.linear().inverse() * haptics_state_curr_.tf.linear();
+
+        // and in robot base coordinates
+        t_incr = t_base_hd * t_incr * t_hd_base;
+
+        // Scale translational part
         t_incr.translation() *= translation_scaling_factor_;
+
+        // Set next desired
         robot_state_desired_.tf.translation() += t_incr.translation();
         robot_state_desired_.tf.linear() = t_incr.linear() * robot_state_desired_.tf.linear();
 
@@ -111,11 +121,11 @@ public:
         if ((haptics_state_curr_.button_state.grey == ButtonState::PRESSED)
             && (haptics_state_curr_.button_state.white == ButtonState::RELEASED)) {
             // Decrease grasp angle
-            grasp_incr = -grasp_rate_ * diff.dt.count();
+            grasp_incr = -grasp_rate_ * dt.count();
         } else if ((haptics_state_curr_.button_state.grey == ButtonState::RELEASED)
                    && (haptics_state_curr_.button_state.white == ButtonState::PRESSED)) {
             // Increase grasp angle
-            grasp_incr = grasp_rate_ * diff.dt.count();
+            grasp_incr = grasp_rate_ * dt.count();
         }
 
         return t_incr;

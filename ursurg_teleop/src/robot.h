@@ -9,6 +9,7 @@
 struct RobotState
 {
     Eigen::Isometry3d tf = Eigen::Isometry3d::Identity();
+    double grasp = 0;
 };
 
 class RobotStateReader
