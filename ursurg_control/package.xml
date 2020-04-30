@@ -10,6 +10,6 @@
 
   <depend>roscpp</depend>
   <depend>ursurg_common</depend>
-  <depend>ursurg_robwork_model</depend>
+  <exec_depend>ursurg_rw_models</exec_depend>
 </package>
 

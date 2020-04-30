@@ -4,7 +4,6 @@ project(ursurg_control)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   ursurg_common
-  ursurg_robwork_model
 )
 find_package(RobWork REQUIRED PATHS "$ENV{RW_ROOT}")
 
