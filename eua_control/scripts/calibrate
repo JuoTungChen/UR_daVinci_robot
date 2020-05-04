@@ -52,7 +52,7 @@ class EUACalibrator(object):
         elif j == WRIST:
             LOAD_THRESHOLD = 0.14
         else:  # JAW[1,2]
-            LOAD_THRESHOLD = 0.13
+            LOAD_THRESHOLD = 0.15
 
         if (self.direction == 1 and servo_state.effort[j] < -LOAD_THRESHOLD) or (self.direction == 0 and servo_state.effort[j] > LOAD_THRESHOLD):
             rospy.loginfo("Found '{}' {} joint limit at {:.1f} deg (servo) / {:.1f} deg (joint) - servo load: {:.3f}".format(
@@ -105,32 +105,19 @@ class EUACalibrator(object):
                     position=[self.joint_calibration_offset[j]]),
                     lambda: trajectory_end_event.set())
 
-        elif j == JAW1:
+        elif j == JAW1 or j == JAW2:
             self.calibrating_joint = j
-            self.direction = 1
+            self.direction = 1 if j == JAW1 else 0
             do_move()
 
             # set known limit of LND
-            # limit_position_joint = self.joint_state.position[:]
-            limit_position_joint = [0, 0, 0, 0]
-            limit_position_joint[j] = np.radians(115)  # 115
-
-            print("self.servo_state.position: {}".format(self.servo_state.position))
-            print("self.joint_state.position: {}".format(self.joint_state.position))
-
+            limit_position_joint = [0, 0, 0, 0]  # self.joint_state.position[:]
+            limit_position_joint[j] = np.radians(115)
 
             # find corresponding servo state
             limit_position_servo = np.linalg.solve(self.c.K, limit_position_joint)
 
-            print("limit_position_joint: {}".format(limit_position_joint))
-            print("limit_position_servo: {}".format(limit_position_servo))
-
-            # return
-
-            # ... and that is the offset to zero
-            # self.servo_calibration_offset[j] = self.servo_state.position[j] - limit_position_servo[j]
-            # self.joint_calibration_offset[j] = self.joint_state.position[j] - limit_position_joint[j]
-
+            # and that is the offset to zero
             self.servo_calibration_offset[j] = self.servo_state.position[j] - limit_position_servo[j]
             self.joint_calibration_offset[j] = self.joint_state.position[j] - limit_position_joint[j]
 
@@ -139,39 +126,12 @@ class EUACalibrator(object):
                     position=[self.joint_calibration_offset[j] ]),
                     lambda: trajectory_end_event.set())
 
-        elif j == JAW2:
-            self.calibrating_joint = j
-            self.direction = 0
-            do_move()
-
-            # set known limit of LND
-            current_position_joint = [0, 0, 0, 0]
-            current_position_joint[j] = np.radians(100)
-
-            # find corresponding servo state
-            current_position_servo = np.linalg.solve(self.c.K, current_position_joint)
-
-            # ... and that is the offset to zero
-            self.servo_calibration_offset[j] = current_position_servo[j]
-            self.joint_calibration_offset[j] = current_position_joint[j]
-
-            self.c.init_trajectory(JointState(
-                    name=[name],
-                    position=[self.joint_calibration_offset[j] + np.radians(45)]),
-                    lambda: trajectory_end_event.set())
-
         rospy.loginfo("Moving '{}' to home position".format(name))
         trajectory_end_event.wait()
 
     def calibrate(self):
-        # idx = [self.c.joint_names.index(n) for n in joints]
-        # limits = [self.motor_limits_in_joint_space[i] for i in idx]
-
-        # for i, joint in enumerate(['roll', 'wrist']):
         try:
-            # for j in [ROLL, WRIST]:
-            for j in [ROLL, WRIST, JAW1]:
-            # for j in [JAW2]:
+            for j in [ROLL, WRIST, JAW1, JAW2]:
                 self.calibrate_joint(j)
 
             rospy.loginfo("Setting offsets to {} (servo) / {} (joint)".format(self.servo_calibration_offset, self.joint_calibration_offset))
@@ -186,37 +146,17 @@ class EUACalibrator(object):
             rospy.signal_shutdown("An error occurred")  # to kill thread
             raise
 
-
-
-        # target_position = [abs(lim[1] - lim[0]) / 2 for lim in self.tool_limits]
-        # # self.publish_goal(self.device_ids, target_position)
-        # self.c.init_trajectory(JointState(name=[name], position=[joint_state.position[i]]))
-
-        # rospy.set_param('limits', {str(i): lim for i, lim in itertools.izip(self.device_ids, self.tool_limits)})
-
     def run(self):
-
         self.tool_limits_servo = [[None, None]] * 4
         self.tool_limits_joint = [[None, None]] * 4
         self.servo_calibration_offset = [0] * 4
         self.joint_calibration_offset = [0] * 4
-        # self.tool_limits_time = [[None, None]] * 4
-
-        # joints = ('roll', 'wrist')
-        # idx = [self.c.joint_names.index(n) for n in joints]
-        # limits = [self.motor_limits_in_joint_space[i] for i in idx]
-
-        # for direction in [1, 0]:
-        #     target_position = [lim[direction] for lim in self.motor_limits_in_joint_space]
-        #     self.c.init_trajectory(JointState(name=[], position=))
-        # joints = ('roll', 'wrist')
         self.calibrate()
-        # rospy.spin()
 
 if __name__ == '__main__':
-    rospy.init_node('eua_calibrate', disable_signals=True)  # rospy is not raising rospy.ROSInterruptException?
+    rospy.init_node('eua_calibrate', disable_signals=True)
 
-    # FIXME: "delete" previous calibration offset via. service call to controller
+    # TODO: "delete" previous calibration offset via. service call to controller
     try:
         rospy.delete_param('/eua/servo_calibration_offset')
         rospy.delete_param('/eua/joint_calibration_offset')
