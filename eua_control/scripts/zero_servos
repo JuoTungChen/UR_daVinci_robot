@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+from __future__ import division, print_function
+
+import argparse
+import dynamixel
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('port')
+    parser.add_argument('baudrate', type=int)
+    parser.add_argument('-d','--device-ids', nargs='+', type=int, required=True, help='Device IDs')
+    args = parser.parse_args()
+
+    chain = dynamixel.Chain(args.port, args.baudrate, args.device_ids)
+
+    if not self.chain.devices:
+        raise RuntimeError("No devices found")
+
+    if len(chain.devices) != 4:
+        raise RuntimeError("Not all devices found")
+
+    for dev in chain.devices:
+        dev.write_param_single('goal_position', 0)
