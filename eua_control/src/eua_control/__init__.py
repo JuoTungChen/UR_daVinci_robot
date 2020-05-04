@@ -15,7 +15,9 @@ class EUAController(object):
 
         # Order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
+        prefix = rospy.get_param('~prefix', '')
         self.joint_names = ('roll', 'wrist', 'jaw1', 'jaw2')
+        self.joint_names_prefixed = [prefix + n for n in self.joint_names]
         self.joint_device_mapping = rospy.get_param('~joint_device_mapping')
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
@@ -48,7 +50,7 @@ class EUAController(object):
 
         # Calibration offset
         self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', [0, 0, 0, 0]))
-        rospy.loginfo("Calibration offset (servo angles): {}".format(self.servo_calibration_offset))
+        rospy.loginfo("Calibration offset (servo space): {}".format(self.servo_calibration_offset))
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -71,8 +73,11 @@ class EUAController(object):
         self.trajectory = None
 
         self.pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
-        self.pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1)
-        self.sub_joint = rospy.Subscriber('move_joint', JointState, self.init_trajectory)
+        self.pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1) if rospy.get_param('~publish_servo_states', False) else None
+        self.subscribers = [
+            rospy.Subscriber('move_joint', JointState, self.init_trajectory),
+            rospy.Subscriber('servo_joint', JointState, self.set_joint_goal_direct),
+        ]
 
         self.state_update_callbacks = []
         self.trajectory_end_callback = None
@@ -103,28 +108,31 @@ class EUAController(object):
     def compute_joint_state(self, servo_state):
         s = JointState()
         s.header.stamp = servo_state.header.stamp
-        s.name = self.joint_names
+        s.name = self.joint_names_prefixed
         s.position = self.K.dot(servo_state.position)
         s.velocity = self.K.dot(servo_state.velocity)
         s.effort = self.K.dot(servo_state.effort)
         return s
 
-    def stop_trajectory(self):
-        self.tg.target_position[:] = self.tg.current_position
-        self.tg.target_velocity.fill(0)
-        self.trajectory = self.tg.trajectory()
+    def write_joint_goal(self, pos_joint_next):
+        # Compute corresponding servo angles through coupling/gearing
+        pos_servo_next = np.linalg.solve(self.K, pos_joint_next)
 
-    def init_trajectory(self, m, trajectory_end_callback=None):
-        """Set a joint-space trajectory setpoint for the given servos
-        """
-        if not m.name or not m.position:
-            rospy.logwarn("Bad input")
-            return
+        # Add calibration offset to servo command
+        pos_servo_next += self.servo_calibration_offset
 
+        # Write goal position to each servo even if there is no trajectory
+        # for that particular joint, as some DOFs are coupled (thus servos may
+        # have to move to maintain a non-moving joint angle)
+        for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
+            dev.write_param_single('goal_position', pos)
+
+    def set_trajgen_target(self, m):
         # Map names to servo IDs
         msg_dev_id = [self.joint_device_mapping[n] for n in m.name]
 
-        # Cache these values (C++ types exposed to Python opaquely)
+        # Cache reference to these values while iterating (they are C++ types
+        # exposed to Python opaquely)
         target_position = self.tg.target_position
         target_velocity = self.tg.target_velocity
 
@@ -134,6 +142,33 @@ class EUAController(object):
                 target_position[i] = m.position[j]
                 target_velocity[i] = m.velocity[j] if m.velocity else 0
 
+    def set_joint_goal_direct(self, m):
+        """Set servo set-point directly without trajectory generation
+        """
+        if self.trajectory:
+            rospy.logwarn("Ignoring direct joint goal: already moving along trajectory")
+            return
+
+        if not m.name or not m.position:
+            rospy.logwarn("Bad input (name or position fields empty)")
+            return
+
+        # Update trajectory generator target so that future trajectories starts
+        # from the correct initial position
+        self.set_trajgen_target(m)
+
+        # Write the target directly to servos without generating the actual
+        # trajectory
+        self.write_joint_goal(self.tg.target_position.tolist())
+
+    def init_trajectory(self, m, trajectory_end_callback=None):
+        """Set a joint-space trajectory setpoint for the given servos
+        """
+        if not m.name or not m.position:
+            rospy.logwarn("Bad input (name or position fields empty)")
+            return
+
+        self.set_trajgen_target(m)
         self.trajectory_end_callback = trajectory_end_callback
         self.trajectory = self.tg.trajectory()
         # rospy.loginfo("New target: {} (servo) / {} (joint)".format(target_position, np.linalg.solve(self.K, target_position)))
@@ -141,21 +176,18 @@ class EUAController(object):
     def step_trajectory(self):
         try:
             pos_joint_next = self.trajectory.next()[0]
-            pos_servo_next = np.linalg.solve(self.K, pos_joint_next)
-
-            # Add calibration offset to servo command
-            pos_servo_next += self.servo_calibration_offset
-
-            # Write goal position to each servo even if there is no trajectory
-            # for that particular joint, as some DOFs are coupled
-            for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
-                dev.write_param_single('goal_position', pos)
+            self.write_joint_goal(pos_joint_next)
         except StopIteration:
             self.trajectory = None
 
             if self.trajectory_end_callback:
                 self.trajectory_end_callback()
                 self.trajectory_end_callback = None
+
+    def stop_trajectory(self):
+        self.tg.target_position[:] = self.tg.current_position
+        self.tg.target_velocity.fill(0)
+        self.trajectory = self.tg.trajectory()
 
     def run(self):
         rospy.loginfo("Starting servo loop")
@@ -169,7 +201,9 @@ class EUAController(object):
                 if self.trajectory:
                     self.step_trajectory()
 
-                self.pub_servo.publish(servo_state)
+                if self.pub_servo is not None:
+                    self.pub_servo.publish(servo_state)
+
                 self.pub_joint.publish(joint_state)
 
                 for f in self.state_update_callbacks:
