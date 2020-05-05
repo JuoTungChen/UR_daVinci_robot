@@ -13,10 +13,10 @@ class EUAController(object):
     def __init__(self):
         self.loop_rate_hz = 100.0
 
-        # Order the supplied device ID's according to this sequence of joint
+        # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
-        prefix = rospy.get_param('~prefix', '')
         self.joint_names = ('roll', 'wrist', 'jaw1', 'jaw2')
+        prefix = rospy.get_param('~prefix', '')
         self.joint_names_prefixed = [prefix + n for n in self.joint_names]
         self.joint_device_mapping = rospy.get_param('~joint_device_mapping')
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
@@ -44,13 +44,19 @@ class EUAController(object):
         self.K = t0 * np.array([
             [  t1,  0,     0,   0   ],
             [  0,   t2,    0,   0   ],
-            [  0,  -t2*w,  t3,  0   ],
-            [  0,   t2*w,  0,  -t3  ],
+            [  0,   t2*w, -t3,  0   ],
+            [  0,  -t2*w,  0,   t3  ],
         ])
 
-        # Calibration offset
-        self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', [0, 0, 0, 0]))
-        rospy.loginfo("Calibration offset (servo space): {}".format(self.servo_calibration_offset))
+        # Calibration offset (default to zero at servo center position)
+        self.servo_limits_lower = np.array([dev.read_param_single('cw_angle_limit') for dev in self.chain.devices])
+        self.servo_limits_upper = np.array([dev.read_param_single('ccw_angle_limit') for dev in self.chain.devices])
+        servo_center = self.servo_limits_lower + (self.servo_limits_upper - self.servo_limits_lower) / 2
+        # self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', servo_center.tolist()))  # rosparam doesn't like ndarrays
+        self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', [0]*4))  # rosparam doesn't like ndarrays
+        self.servo_limits_lower -= self.servo_calibration_offset
+        self.servo_limits_upper -= self.servo_calibration_offset
+        rospy.loginfo("Calibration offset (servo space): {} deg.".format(np.degrees(self.servo_calibration_offset)))
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -87,6 +93,8 @@ class EUAController(object):
         s.header.stamp = rospy.Time.now()
 
         for i, dev in enumerate(self.chain.devices):
+            s.name.append(str(dev.id))
+
             if isinstance(dev, dynamixel.device.AX12):
                 d = dev.read_params(['present_position', 'present_speed', 'present_load'])
                 s.position[i] = d['present_position']
@@ -142,6 +150,10 @@ class EUAController(object):
                 target_position[i] = m.position[j]
                 target_velocity[i] = m.velocity[j] if m.velocity else 0
 
+        # rospy.loginfo("New target:\n\t{} (servo)\n\t{} (joint)".format(
+        #     np.linalg.solve(self.K, target_position),
+        #     np.array(target_position)))
+
     def set_joint_goal_direct(self, m):
         """Set servo set-point directly without trajectory generation
         """
@@ -171,7 +183,6 @@ class EUAController(object):
         self.set_trajgen_target(m)
         self.trajectory_end_callback = trajectory_end_callback
         self.trajectory = self.tg.trajectory()
-        # rospy.loginfo("New target: {} (servo) / {} (joint)".format(target_position, np.linalg.solve(self.K, target_position)))
 
     def step_trajectory(self):
         try:

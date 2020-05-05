@@ -1,9 +1,18 @@
 #!/usr/bin/env python
 
+"""
+Bring Dynamixel servos with the given IDs to their center position.
+
+Usage example:
+
+    ./zero_servos /dev/ttyACM0 1000000 --device-ids 1 2 3 4
+"""
+
 from __future__ import division, print_function
 
 import argparse
 import dynamixel
+import numpy as np
 
 
 if __name__ == '__main__':
@@ -15,11 +24,14 @@ if __name__ == '__main__':
 
     chain = dynamixel.Chain(args.port, args.baudrate, args.device_ids)
 
-    if not self.chain.devices:
+    if not chain.devices:
         raise RuntimeError("No devices found")
 
-    if len(chain.devices) != 4:
+    if len(chain.devices) != len(args.device_ids):
         raise RuntimeError("Not all devices found")
 
-    for dev in chain.devices:
-        dev.write_param_single('goal_position', 0)
+    limits = [(dev.read_param_single('cw_angle_limit'), dev.read_param_single('ccw_angle_limit')) for dev in chain.devices]
+    center = [lo + (hi - lo) / 2 for lo, hi in limits]
+
+    for dev, q in zip(chain.devices, center):
+        dev.write_param_single('goal_position', q)
