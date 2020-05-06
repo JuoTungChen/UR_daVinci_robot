@@ -21,8 +21,8 @@
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
       <param name="rw_workcell_path" value="$(find ursurg_rw_models)/workcell/ursurg.wc.xml" />
-      <param name="robot_name" value="UR5" />
-      <param name="tool_name" value="LND1" /> <!-- FIXME -->
+      <param name="robot_name" value="UR5e" />
+      <param name="tool_name" value="LND420006" />
     </node>
 
   </group>
