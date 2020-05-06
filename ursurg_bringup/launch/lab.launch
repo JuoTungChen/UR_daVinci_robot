@@ -4,19 +4,17 @@
   <!-- UR5e + EUA1 -->
   <group ns="first">
 
-    <node name="ur_control" pkg="ur_control" type="ur_control" output="screen">
+    <node ns="robot" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="192.168.10.201" />
       <param name="prefix" value="ur5e" />
-      <remap from="joint_states" to="robot_joint_states" />
     </node>
 
-    <node name="eua_control" pkg="eua_control" type="controller" output="screen">
+    <node ns="tool"  name="eua_control" pkg="eua_control" type="controller" output="screen">
       <rosparam>
         port: "/dev/ttyACM0"
         baud_rate: 1000000
         joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 3, "jaw2": 4}
       </rosparam>
-      <remap from="joint_states" to="tool_joint_states" />
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">

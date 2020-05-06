@@ -92,10 +92,10 @@ int main(int argc, char* argv[])
     ik_solver.setEnableInterpolation(false);
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
-    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("robot_move_joint", 1);
-    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("robot_servo_joint", 1);
-    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool_move_joint", 1);
-    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool_servo_joint", 1);
+    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("robot/move_joint", 1);
+    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("robot/servo_joint", 1);
+    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
+    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
     auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
         auto solutions = ik_solver.solve(convert(m.pose), state);
@@ -125,12 +125,12 @@ int main(int argc, char* argv[])
 
     std::list<ros::Subscriber> subscribers{
         mksub<sensor_msgs::JointState>(
-            nh, "robot_joint_states", 1, [&](const auto& m) {
+            nh, "robot/joint_states", 1, [&](const auto& m) {
                 robot->setQ(m.position, state);
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
-            nh, "tool_joint_states", 1, [&](const auto& m) {
+            nh, "tool/joint_states", 1, [&](const auto& m) {
                 tool->setQ(m.position, state);
 
                 // Set TCP frame rotation between that of the grasper jaws
@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
-            nh, "move_j_ik", 1, [&](const auto& m) {
+            nh, "move_joint_ik", 1, [&](const auto& m) {
                 // "move" set-points may lie be anywhere in the workspace, so
                 // enable linear interpolation of via-points toward the target
                 ik_solver.setEnableInterpolation(true);
@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
-            nh, "servo_j_ik", 1, [&](const auto& m) {
+            nh, "servo_joint_ik", 1, [&](const auto& m) {
                 auto s = solve_and_make_msgs(m);
 
                 if (s) {
