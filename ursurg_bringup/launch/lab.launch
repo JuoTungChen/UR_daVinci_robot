@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- UR5e + EUA1 -->
+  <group ns="first">
+
+    <node name="ur_control" pkg="ur_control" type="ur_control" output="screen">
+      <param name="hostname" value="192.168.10.201" />
+      <param name="prefix" value="ur5e" />
+      <remap from="joint_states" to="robot_joint_states" />
+    </node>
+
+    <node name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <rosparam>
+        port: "/dev/ttyACM0"
+        baud_rate: 1000000
+        joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 3, "jaw2": 4}
+      </rosparam>
+      <remap from="joint_states" to="tool_joint_states" />
+    </node>
+
+    <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
+      <param name="workcell" value="$(find ursurg_rw_models)/workcell/ursurg.wc.xml" />
+      <param name="robot_name" value="UR5" />
+      <param name="tool_name" value="LND1" /> <!-- FIXME -->
+    </node>
+
+  </group>
+
+  <!-- UR5 + EUA2 -->
+
+</launch>
+
