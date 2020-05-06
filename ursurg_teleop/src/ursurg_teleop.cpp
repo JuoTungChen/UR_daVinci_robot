@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
-    Pair<ros::NodeHandle> nh_rl{nh_priv.param("ns_left", "left"s), nh_priv.param("ns_right", "right"s)};
+    Pair<ros::NodeHandle> nh_rl{nh_priv.param("ns_first", "first"s), nh_priv.param("ns_second", "second"s)};
 
     HapticsStateReader haptics(nh_priv.param("device_name_left", "left"s),
                                nh_priv.param("device_name_right", "right"s),
@@ -174,8 +174,8 @@ int main(int argc, char* argv[])
 
     RobotStateReader robot(nh_rl);
 
-    auto pub_servo = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("servo_j_ik", 1); });
-    auto pub_haptics = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("pose_haptics_current", 1); });
+    auto pub_servo = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("servo_joint_ik", 1); });
+    auto pub_haptics = nh_rl.apply([](auto& n) { return n.template advertise<geometry_msgs::PoseStamped>("haptics_pose_current", 1); });
 
     Pair<TeleopController> ctrl({[&]() { return haptics.currentState(LEFT); },
                                  [&]() { return robot.currentState(LEFT); },
