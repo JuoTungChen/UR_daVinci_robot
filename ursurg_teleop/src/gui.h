@@ -22,9 +22,9 @@ signals:
     void disengaged();
 
 private:
-    void setEngaged();
-    void setDisengaged();
+    void setClutchEngaged();
+    void setClutchDisengaged();
 
 private:
-    bool clutched_;
+    bool clutch_engaged_;
 };

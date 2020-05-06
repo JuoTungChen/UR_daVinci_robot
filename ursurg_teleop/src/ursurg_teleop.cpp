@@ -1,4 +1,4 @@
-#include "common.h"
+﻿#include "common.h"
 #include "gui.h"
 #include "haptics.h"
 #include "robot.h"
@@ -8,6 +8,7 @@
 #include <ursurg_common/synchronized.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <std_msgs/Bool.h>
 
 #include <ros/ros.h>
 
@@ -185,15 +186,30 @@ int main(int argc, char* argv[])
                                  nh_priv.param("grasp_rate", math::pi / 4),
                                  nh_priv.param("translation_scaling_factor", 1.0)});
 
+    auto pub_clutch = nh.advertise<std_msgs::Bool>("clutch", 4, true); // latched
+
+    // Publish initial value
+    std_msgs::Bool m;
+    m.data = false;
+    pub_clutch.publish(m);
+
     ClutchWidget clutch_widget;
 
     QObject::connect(&clutch_widget, &ClutchWidget::engaged, [&]() {
         ctrl.right.engage();
         ctrl.left.engage();
+
+        std_msgs::Bool m;
+        m.data = true;
+        pub_clutch.publish(m);
     });
     QObject::connect(&clutch_widget, &ClutchWidget::disengaged, [&]() {
         ctrl.left.disengage();
         ctrl.right.disengage();
+
+        std_msgs::Bool m;
+        m.data = false;
+        pub_clutch.publish(m);
     });
 
     std::list<ros::SteadyTimer> timers{

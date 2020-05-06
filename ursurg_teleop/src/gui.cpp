@@ -3,7 +3,7 @@
 
 ClutchWidget::ClutchWidget(QWidget* parent)
     : QWidget(parent)
-    , clutched_(false)
+    , clutch_engaged_(false)
 {
     setWindowTitle("Clutch");
     setBackgroundColor(Qt::red);
@@ -12,12 +12,12 @@ ClutchWidget::ClutchWidget(QWidget* parent)
 
 void ClutchWidget::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() == Qt::Key_D && clutched_) {
-        clutched_ = false;
-        setDisengaged();
-    } else if (event->key() == Qt::Key_E && !clutched_) {
-        clutched_ = true;
-        setEngaged();
+    if (event->key() == Qt::Key_D && clutch_engaged_) {
+        clutch_engaged_ = false;
+        setClutchDisengaged();
+    } else if (event->key() == Qt::Key_E && !clutch_engaged_) {
+        clutch_engaged_ = true;
+        setClutchEngaged();
     }
 
     QWidget::keyPressEvent(event);
@@ -26,7 +26,7 @@ void ClutchWidget::keyPressEvent(QKeyEvent* event)
 void ClutchWidget::focusOutEvent(QFocusEvent* event)
 {
     QWidget::focusOutEvent(event);
-    setDisengaged();
+    setClutchDisengaged();
 }
 
 void ClutchWidget::setBackgroundColor(Qt::GlobalColor color)
@@ -36,13 +36,13 @@ void ClutchWidget::setBackgroundColor(Qt::GlobalColor color)
     setPalette(pal);
 }
 
-void ClutchWidget::setEngaged()
+void ClutchWidget::setClutchEngaged()
 {
     emit engaged();
     setBackgroundColor(Qt::green);
 }
 
-void ClutchWidget::setDisengaged()
+void ClutchWidget::setClutchDisengaged()
 {
     emit disengaged();
     setBackgroundColor(Qt::red);
