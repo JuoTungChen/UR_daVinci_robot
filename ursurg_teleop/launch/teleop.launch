@@ -3,6 +3,7 @@
   <node name="ursurg_teleop" pkg="ursurg_teleop" type="ursurg_teleop" output="screen">
     <param name="device_name_left" value="left" />
     <param name="device_name_right" value="right" />
+    <param name="publish_haptics_poses" value="true" />
   </node>
 
 </launch>
