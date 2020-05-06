@@ -6,14 +6,14 @@
 
     <node ns="robot" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="192.168.10.201" />
-      <param name="prefix" value="ur5e" />
+      <param name="prefix" value="first_" />
     </node>
 
     <node ns="tool"  name="eua_control" pkg="eua_control" type="controller" output="screen">
       <rosparam>
         port: "/dev/ttyACM0"
         baud_rate: 1000000
-        joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 3, "jaw2": 4}
+        joint_device_mapping: {"roll": 1, "wrist": 2, "jaw1": 4, "jaw2": 3}
       </rosparam>
     </node>
 
@@ -26,6 +26,28 @@
   </group>
 
   <!-- UR5 + EUA2 -->
+  <group ns="second">
+
+    <node ns="robot" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
+      <param name="hostname" value="192.168.10.202" />
+      <param name="prefix" value="second_" />
+    </node>
+
+    <node ns="tool"  name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <rosparam>
+        port: "/dev/ttyUSB0"
+        baud_rate: 1000000
+        joint_device_mapping: {"roll": 21, "wrist": 22, "jaw1": 23, "jaw2": 24} <!-- FIXME -->
+      </rosparam>
+    </node>
+
+    <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
+      <param name="rw_workcell_path" value="$(find ursurg_rw_models)/workcell/ursurg.wc.xml" />
+      <param name="robot_name" value="UR5" />
+      <param name="tool_name" value="LND470006" />
+    </node>
+
+  </group>
 
 </launch>
 
