@@ -19,6 +19,7 @@ include_directories(
 
 add_executable(ursurg_control
   src/ursurg_control.cpp
+  src/WeightedJacobianIKSolver.cpp
 )
 
 target_link_libraries(ursurg_control

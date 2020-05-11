@@ -3,7 +3,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
-#include <rw/invkin/JacobianIKSolver.hpp>
+//#include <rw/invkin/JacobianIKSolver.hpp>
+#include "WeightedJacobianIKSolver.hpp" // to be moved to rw later
 #include <rw/kinematics/FixedFrame.hpp>
 #include <rw/loaders/WorkCellLoader.hpp>
 #include <rw/models/CompositeJointDevice.hpp>
@@ -91,9 +92,12 @@ int main(int argc, char* argv[])
                                           robot_name + "_" + tool_name,
                                           state);
 
-    rw::invkin::JacobianIKSolver ik_solver(&cdev, state);
+    rw::invkin::WeightedJacobianIKSolver ik_solver(&cdev, state);
     ik_solver.setCheckJointLimits(true);
     ik_solver.setEnableInterpolation(false);
+    // Set weights
+    Eigen::VectorXd weights = Eigen::VectorXd::Ones(cdev.getDOF());
+    ik_solver.setWeightVector(weights);
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
     auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur_move_joint", 1);
