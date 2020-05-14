@@ -95,9 +95,8 @@ int main(int argc, char* argv[])
     rw::invkin::WeightedJacobianIKSolver ik_solver(&cdev, state);
     ik_solver.setCheckJointLimits(true);
     ik_solver.setEnableInterpolation(false);
-    // Set weights
-    Eigen::VectorXd weights = Eigen::VectorXd::Ones(cdev.getDOF());
-    ik_solver.setWeightVector(weights);
+    auto weights = nh_priv.param("weights", std::vector<double>(cdev.getDOF(), 1.0));
+    ik_solver.setWeightVector(Eigen::VectorXd::Map(weights.data(), weights.size()));
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
     auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur_move_joint", 1);
