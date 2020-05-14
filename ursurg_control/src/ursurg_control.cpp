@@ -74,7 +74,11 @@ int main(int argc, char* argv[])
     if (!tool)
         throw std::runtime_error("Tool device '" + tool_name + "' not found");
 
-    auto tcp = static_cast<rw::kinematics::FixedFrame*>(tool->getEnd()); // aka. tool->_ends.front()
+    auto tcp = tool->getEnd(); // aka. tool->_ends.front()
+
+    ROS_INFO_STREAM("Robot: " << robot->getName());
+    ROS_INFO_STREAM("Tool: " << tool->getName());
+    ROS_INFO_STREAM("TCP: " << tcp->getName());
 
     // Access to 'state' does not have to be synchronized when processing ROS
     // callbacks from only a single thread
@@ -92,10 +96,10 @@ int main(int argc, char* argv[])
     ik_solver.setEnableInterpolation(false);
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
-    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("robot/move_joint", 1);
-    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("robot/servo_joint", 1);
-    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
-    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
+    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur_move_joint", 1);
+    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur_servo_joint", 1);
+    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool_move_joint", 1);
+    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool_servo_joint", 1);
 
     auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
         auto solutions = ik_solver.solve(convert(m.pose), state);
@@ -125,19 +129,13 @@ int main(int argc, char* argv[])
 
     std::list<ros::Subscriber> subscribers{
         mksub<sensor_msgs::JointState>(
-            nh, "robot/joint_states", 1, [&](const auto& m) {
+            nh, "ur_joint_states", 1, [&](const auto& m) {
                 robot->setQ(m.position, state);
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
-            nh, "tool/joint_states", 1, [&](const auto& m) {
+            nh, "tool_joint_states", 1, [&](const auto& m) {
                 tool->setQ(m.position, state);
-
-                // Set TCP frame rotation between that of the grasper jaws
-                double grasp_angle = (m.position[3] - m.position[2]) / 2.0;
-                auto tf = tcp->getFixedTransform();
-                tf.R() = rot_z(grasp_angle);
-                tcp->setTransform(tf);
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
@@ -167,14 +165,15 @@ int main(int argc, char* argv[])
     };
 
     // Schedule timer to publish robot state
-    auto ti = nh.createSteadyTimer(ros::WallDuration(1.0 / 100),
-                                   [&](const auto&) {
-                                       geometry_msgs::PoseStamped m;
-                                       m.header.stamp = ros::Time::now();
-                                       m.header.frame_id = cdev.getBase()->getName();
-                                       m.pose = convert(cdev.baseTend(state));
-                                       pub_pose.publish(m);
-                                   });
+    auto timer = nh.createSteadyTimer(
+        ros::WallDuration(1.0 / 100),
+        [&](const auto&) {
+            geometry_msgs::PoseStamped m;
+            m.header.stamp = ros::Time::now();
+            m.header.frame_id = cdev.getBase()->getName();
+            m.pose = convert(cdev.baseTend(state));
+            pub_pose.publish(m);
+        });
 
     ros::spin();
 
