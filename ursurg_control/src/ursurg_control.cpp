@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
         // and the last 4 is the tool configuration
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
-        m_tool.name = {"rotation", "wrist", "jaw1", "jaw2"}; // names matter to the eua_control node
+        m_tool.name = {"roll", "wrist", "jaw1", "jaw2"}; // names matter to the eua_control node
         std::copy(std::next(dptr, 6), std::next(dptr, 10), std::back_inserter(m_tool.position));
 
         return std::make_pair(m_robot, m_tool);
