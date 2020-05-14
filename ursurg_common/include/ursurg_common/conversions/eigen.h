@@ -94,5 +94,5 @@ Eigen::Isometry3d convert_to(const geometry_msgs::Pose& m)
 {
     auto p = convert_to<Eigen::Translation3d>(m.position);
     auto q = convert_to<Eigen::Quaterniond>(m.orientation);
-    return q * p;
+    return p * q;
 }
