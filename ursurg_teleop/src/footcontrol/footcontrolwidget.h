@@ -1,16 +1,16 @@
 #pragma once
 
 #include <QWidget>
-#include <QKeyEvent>
 
-#include <atomic>
+class QKeyEvent;
+class QFocusEvent;
 
-class ClutchWidget : public QWidget
+class FootControlWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    ClutchWidget(QWidget* parent = nullptr);
+    FootControlWidget(QWidget* parent = nullptr);
 
 private:
     virtual void keyPressEvent(QKeyEvent* event) override;
@@ -18,8 +18,7 @@ private:
     void setBackgroundColor(Qt::GlobalColor color);
 
 signals:
-    void engaged();
-    void disengaged();
+    void clutchEngagedChanged(bool engaged);
 
 private:
     void setClutchEngaged();

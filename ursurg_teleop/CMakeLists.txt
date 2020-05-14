@@ -13,27 +13,30 @@ find_package(catkin REQUIRED COMPONENTS
   ursurg_common
 )
 
-find_package(Geomagic REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 
 catkin_package()
 
-include_directories(
-  ${Geomagic_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-)
+include_directories(${catkin_INCLUDE_DIRS})
 
 if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
   add_compile_options(-Wall -Wextra)
 endif()
 
-add_executable(ursurg_teleop src/ursurg_teleop.cpp src/gui.cpp src/robot.cpp src/haptics.cpp src/hd++.cpp)
-target_link_libraries(ursurg_teleop
+add_executable(teleop src/teleop/teleop.cpp)
+target_link_libraries(teleop
+  Eigen3::Eigen
+  ${catkin_LIBRARIES}
+)
+
+add_executable(foot_control
+  src/footcontrol/footcontrol.cpp
+  src/footcontrol/footcontrolwidget.cpp
+)
+target_link_libraries(foot_control
   Qt5::Core
   Qt5::Gui
   Qt5::Widgets
-  Eigen3::Eigen
-  ${Geomagic_LIBRARIES}
   ${catkin_LIBRARIES}
 )
