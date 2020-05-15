@@ -22,6 +22,10 @@ add_executable(ursurg_control
   src/WeightedJacobianIKSolver.cpp
 )
 
+if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
+  target_compile_options(ursurg_control PRIVATE -Wall)
+endif()
+
 target_link_libraries(ursurg_control
   ${ROBWORK_LIBRARIES}
   ${catkin_LIBRARIES}

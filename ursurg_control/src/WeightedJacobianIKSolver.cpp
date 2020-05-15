@@ -46,19 +46,12 @@ WeightedJacobianIKSolver::WeightedJacobianIKSolver(Device::CPtr device, const Fr
     , _checkJointLimits(false)
 {
     setMaxIterations(15);
+    setWeightVector(Eigen::VectorXd::Ones(_device->getDOF()));
 }
 
 WeightedJacobianIKSolver::WeightedJacobianIKSolver(Device::CPtr device, const State& state)
-    : _device(device)
-    , _interpolationStep(0.21)
-    , _fkrange(device->getBase(), device->getEnd(), state)
-    , _devJac(device->baseJCend(state))
-    , _useJointClamping(false)
-    , _useInterpolation(false)
-    , _checkJointLimits(false)
-{
-    setMaxIterations(15);
-}
+    : WeightedJacobianIKSolver(device, device->getEnd(), state)
+{}
 
 std::vector<Q> WeightedJacobianIKSolver::solve(const Transform3D<>& bTed,
                                                const State& initial_state) const
@@ -83,16 +76,23 @@ std::vector<Q> WeightedJacobianIKSolver::solve(const Transform3D<>& bTed,
     // now we perform yet another newton search with higher precision to determine
     // the end result
     if (solveLocal(bTed, maxError, state, maxIterations)) {
-        std::vector<Q> result;
         auto q = _device->getQ(state);
 
         if (!_checkJointLimits || Models::inBounds(q, *_device))
-            result.push_back(q);
-
-        return result;
+            return {q};
     }
 
-    return std::vector<Q>();
+    return {};
+}
+
+void WeightedJacobianIKSolver::setInterpolatorStep(double interpolatorStep)
+{
+    _interpolationStep = interpolatorStep;
+}
+
+void WeightedJacobianIKSolver::setEnableInterpolation(bool enableInterpolation)
+{
+    _useInterpolation = enableInterpolation;
 }
 
 bool WeightedJacobianIKSolver::solveLocal(const Transform3D<>& bTed,
@@ -104,19 +104,18 @@ bool WeightedJacobianIKSolver::solveLocal(const Transform3D<>& bTed,
     Device::QBox bounds = _device->getBounds();
 
     for (int cnt = 0; cnt < maxIter; ++cnt) {
-        const Transform3D<>& bTe = _fkrange.get(state);
-        const Transform3D<>& eTed = inverse(bTe) * bTed;
+        auto bTe = _fkrange.get(state);
+        auto eTed = inverse(bTe) * bTed;
 
-        const EAA<> e_eOed(eTed(2, 1), eTed(0, 2), eTed(1, 0));
-        const Vector3D<>& e_eVed = eTed.P();
-        const VelocityScrew6D<> e_eXed(e_eVed, e_eOed);
-        const VelocityScrew6D<>& b_eXed = bTe.R() * e_eXed;
+        EAA<> e_eOed(eTed(2, 1), eTed(0, 2), eTed(1, 0));
+        VelocityScrew6D<> e_eXed(eTed.P(), e_eOed);
+        VelocityScrew6D<> b_eXed = bTe.R() * e_eXed;
 
         if (normInf(b_eXed) <= maxError)
             return true;
 
-        Eigen::VectorXd dS = b_eXed.e();
-        Eigen::MatrixXd J = _devJac->get(state).e();
+        auto dS = b_eXed.e();
+        auto J = _devJac->get(state).e();
         auto JT = J.transpose();
 
         // Equation 9 from https://ieeexplore.ieee.org/document/370511
@@ -138,12 +137,28 @@ bool WeightedJacobianIKSolver::solveLocal(const Transform3D<>& bTed,
     return false;
 }
 
+void WeightedJacobianIKSolver::setClampToBounds(bool enableClamping)
+{
+    _useJointClamping = enableClamping;
+}
+
 void WeightedJacobianIKSolver::setWeightVector(Eigen::VectorXd weights)
 {
-    if (weights.size() != _device->getDOF())
+    if (weights.size() != static_cast<Eigen::VectorXd::Index>(_device->getDOF()))
         throw std::runtime_error("Weight vector must have same length as device DOF!");
 
-    _wInv = weights.asDiagonal().inverse();
+    _w = weights.asDiagonal();
+    _wInv = _w.inverse();
+}
+
+Eigen::VectorXd WeightedJacobianIKSolver::getWeightVector() const
+{
+    return _w.diagonal();
+}
+
+void WeightedJacobianIKSolver::setCheckJointLimits(bool check)
+{
+    _checkJointLimits = check;
 }
 
 rw::kinematics::Frame::CPtr WeightedJacobianIKSolver::getTCP() const

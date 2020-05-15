@@ -9,51 +9,50 @@
 
 namespace rw {
 namespace models {
-    class Device;
-    class JacobianCalculator;
+
+class Device;
+class JacobianCalculator;
+
 } // namespace models
 } // namespace rw
 
-namespace rw {
-namespace invkin {
+class WeightedJacobianIKSolver : public rw::invkin::IterativeIK
+{
+public:
+    typedef rw::common::Ptr<WeightedJacobianIKSolver> Ptr;
+    typedef rw::common::Ptr<const WeightedJacobianIKSolver> CPtr;
 
-    class WeightedJacobianIKSolver : public IterativeIK
-    {
-    public:
-        typedef rw::common::Ptr<WeightedJacobianIKSolver> Ptr;
-        typedef rw::common::Ptr<const WeightedJacobianIKSolver> CPtr;
+    WeightedJacobianIKSolver(rw::common::Ptr<const rw::models::Device> device,
+                             const rw::kinematics::State& state);
 
-        WeightedJacobianIKSolver(rw::common::Ptr<const rw::models::Device> device,
-                                 const kinematics::State& state);
+    WeightedJacobianIKSolver(rw::common::Ptr<const rw::models::Device> device,
+                             const rw::kinematics::Frame* foi,
+                             const rw::kinematics::State& state);
 
-        WeightedJacobianIKSolver(rw::common::Ptr<const rw::models::Device> device,
-                                 const rw::kinematics::Frame* foi,
-                                 const kinematics::State& state);
+    std::vector<rw::math::Q> solve(const rw::math::Transform3D<>& baseTend,
+                                   const rw::kinematics::State& state) const;
+    void setInterpolatorStep(double interpolatorStep);
+    void setEnableInterpolation(bool enableInterpolation);
+    bool solveLocal(const rw::math::Transform3D<>& bTed,
+                    double maxError,
+                    rw::kinematics::State& state,
+                    int maxIter) const;
+    void setClampToBounds(bool enableClamping);
+    ;
+    void setWeightVector(Eigen::VectorXd weights);
+    Eigen::VectorXd getWeightVector() const;
+    void setCheckJointLimits(bool check);
 
-        std::vector<math::Q> solve(const math::Transform3D<>& baseTend,
-                                   const kinematics::State& state) const;
-        void setInterpolatorStep(double interpolatorStep) { _interpolationStep = interpolatorStep; }
-        void setEnableInterpolation(bool enableInterpolation) { _useInterpolation = enableInterpolation; };
-        bool solveLocal(const math::Transform3D<>& bTed,
-                        double maxError,
-                        kinematics::State& state,
-                        int maxIter) const;
-        void setClampToBounds(bool enableClamping) { _useJointClamping = enableClamping; };
-        void setWeightVector(Eigen::VectorXd weights);
-        void setCheckJointLimits(bool check) { _checkJointLimits = check; }
+    virtual rw::common::Ptr<const rw::kinematics::Frame> getTCP() const;
 
-        virtual rw::common::Ptr<const rw::kinematics::Frame> getTCP() const;
-
-    private:
-        rw::common::Ptr<const rw::models::Device> _device;
-        double _interpolationStep;
-        kinematics::FKRange _fkrange;
-        rw::common::Ptr<models::JacobianCalculator> _devJac;
-        bool _useJointClamping, _useInterpolation, _checkJointLimits;
-        Eigen::MatrixXd _wInv; // Weight matrix
-    };
-
-} // namespace invkin
-} // namespace rw
+private:
+    rw::common::Ptr<const rw::models::Device> _device;
+    double _interpolationStep;
+    rw::kinematics::FKRange _fkrange;
+    rw::common::Ptr<rw::models::JacobianCalculator> _devJac;
+    bool _useJointClamping, _useInterpolation, _checkJointLimits;
+    Eigen::MatrixXd _w; // Weight matrix
+    Eigen::MatrixXd _wInv; // Weight matrix
+};
 
 #endif // end include guard

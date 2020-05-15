@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
                                           robot_name + "_" + tool_name,
                                           state);
 
-    rw::invkin::WeightedJacobianIKSolver ik_solver(&cdev, state);
+    WeightedJacobianIKSolver ik_solver(&cdev, state);
     ik_solver.setCheckJointLimits(true);
     ik_solver.setEnableInterpolation(false);
     auto weights = nh_priv.param("weights", std::vector<double>(cdev.getDOF(), 1.0));
