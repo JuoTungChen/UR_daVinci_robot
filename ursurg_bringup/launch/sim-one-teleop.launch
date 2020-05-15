@@ -28,7 +28,7 @@
     </node>
 
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
-      <remap from="haptic_pose" to="/hid/touch/left" />
+      <remap from="haptic_pose" to="/hid/touch/left/pose" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
     </node>
 
