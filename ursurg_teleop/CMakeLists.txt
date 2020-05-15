@@ -9,7 +9,6 @@ set(CMAKE_AUTOMOC ON)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
-  ur_control
   ursurg_common
 )
 
