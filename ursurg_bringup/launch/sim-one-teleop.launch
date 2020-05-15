@@ -30,6 +30,7 @@
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
       <remap from="haptic_pose" to="/hid/touch/left/pose" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
+      <remap from="tcp_pose_desired" to="servo_joint_ik" />
     </node>
 
   </group>
