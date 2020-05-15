@@ -160,8 +160,8 @@ int main(int argc, char* argv[])
                 auto s = solve_and_make_msgs(m);
 
                 if (s) {
-                    pub_robot_move_joint.publish(s->first);
-                    pub_tool_move_joint.publish(s->second);
+                    pub_robot_servo_joint.publish(s->first);
+                    pub_tool_servo_joint.publish(s->second);
                 }
             },
             ros::TransportHints().tcpNoDelay()),
