@@ -27,7 +27,7 @@
       <remap from="tool_servo_joint" to="tool/servo_joint" />
     </node>
 
-    <node name="ursurg_teleop" pkg="ursurg_teleop" type="ursurg_teleop" output="screen">
+    <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
       <remap from="haptic_pose" to="/hid/touch/left" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
     </node>
