@@ -43,6 +43,12 @@ geometry_msgs::Quaternion convert_to(const rw::math::Quaternion<double>& q)
 }
 
 template<>
+geometry_msgs::Quaternion convert_to(const rw::math::Rotation3D<double>& rot)
+{
+    return convert_to<geometry_msgs::Quaternion>(rw::math::Quaternion<double>(rot));
+}
+
+template<>
 geometry_msgs::Pose convert_to(const rw::math::Transform3D<double>& tf)
 {
     geometry_msgs::Pose m;

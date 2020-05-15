@@ -1,10 +1,11 @@
+#include <ursurg_common/conversions/robwork.h>
 #include <ursurg_common/rosutility.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
-//#include <rw/invkin/JacobianIKSolver.hpp>
-#include "WeightedJacobianIKSolver.hpp" // to be moved to rw later
+#include "WeightedJacobianIKSolver.hpp" // to be moved to RW later
+#include <rw/invkin/JacobianIKSolver.hpp>
 #include <rw/kinematics/FixedFrame.hpp>
 #include <rw/loaders/WorkCellLoader.hpp>
 #include <rw/models/CompositeJointDevice.hpp>
@@ -26,27 +27,6 @@ rw::math::Rotation3D<double> rot_z(double a)
             sa,  ca,  0,
             0,   0,   1};
     // clang-format on
-}
-
-geometry_msgs::Pose convert(const rw::math::Transform3D<double>& tf)
-{
-    geometry_msgs::Pose m;
-    m.position.x = tf.P()[0];
-    m.position.y = tf.P()[1];
-    m.position.z = tf.P()[2];
-    rw::math::Quaternion<double> q(tf.R());
-    m.orientation.x = q.getQx();
-    m.orientation.y = q.getQy();
-    m.orientation.z = q.getQz();
-    m.orientation.w = q.getQw();
-    return m;
-}
-
-rw::math::Transform3D<double> convert(const geometry_msgs::Pose& m)
-{
-    rw::math::Vector3D<double> p(m.position.x, m.position.y, m.position.z);
-    rw::math::Quaternion<double> q(m.orientation.x, m.orientation.y, m.orientation.z, m.orientation.w);
-    return {p, q.toRotation3D()};
 }
 
 int main(int argc, char* argv[])
@@ -105,7 +85,7 @@ int main(int argc, char* argv[])
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool_servo_joint", 1);
 
     auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
-        auto solutions = ik_solver.solve(convert(m.pose), state);
+        auto solutions = ik_solver.solve(convert_to<rw::math::Transform3D<double>>(m.pose), state);
 
         if (solutions.empty()) {
             ROS_WARN("No IK solutions");
@@ -174,7 +154,7 @@ int main(int argc, char* argv[])
             geometry_msgs::PoseStamped m;
             m.header.stamp = ros::Time::now();
             m.header.frame_id = cdev.getBase()->getName();
-            m.pose = convert(cdev.baseTend(state));
+            m.pose = convert_to<geometry_msgs::Pose>(cdev.baseTend(state));
             pub_pose.publish(m);
         });
 

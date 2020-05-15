@@ -35,20 +35,11 @@ struct Pose
         , orientation(convert_to<Eigen::Quaterniond>(pose.orientation))
     {}
 
-    Pose inverse() const
-    {
-        return {translation.inverse(), orientation.inverse()};
-    }
-
-    operator Eigen::Isometry3d() const
+    Eigen::Isometry3d tf() const
     {
         return translation * orientation;
     }
 
-    Pose operator*(const Pose& p) const
-    {
-        return {translation * p.translation, orientation * p.orientation};
-    }
 
     static Pose Identity()
     {
@@ -105,10 +96,11 @@ int main(int argc, char* argv[])
 
                 if (clutch_engaged) {
                     // Compute diff
-                    Pose diff = pose_haptic_last.inverse() * pose_haptic_current;
+                    Pose diff(pose_haptic_last.translation.inverse() * pose_haptic_current.translation,
+                              pose_haptic_last.orientation.inverse() * pose_haptic_current.orientation);
 
                     // Change of basis
-                    Eigen::Isometry3d t_incr = t_base_touch * diff * t_touch_base;
+                    Eigen::Isometry3d t_incr = t_base_touch * diff.tf() * t_touch_base;
 
                     // Accumulate translation and rotation separately
                     t_tcp_desired.translation() += t_incr.translation();
