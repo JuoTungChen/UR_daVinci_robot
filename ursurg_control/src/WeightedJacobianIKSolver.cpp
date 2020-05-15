@@ -17,22 +17,17 @@
 
 #include "WeightedJacobianIKSolver.hpp"
 
+#include <rw/kinematics/Frame.hpp>
 #include <rw/math/Jacobian.hpp>
 #include <rw/math/LinearAlgebra.hpp>
 #include <rw/math/VelocityScrew6D.hpp>
-
 #include <rw/models/Device.hpp>
 #include <rw/models/Models.hpp>
-
-#include <rw/kinematics/Frame.hpp>
-
 #include <rw/trajectory/LinearInterpolator.hpp>
 
-using namespace boost;
 using namespace rw::math;
 using namespace rw::models;
 using namespace rw::kinematics;
-using namespace rw::common;
 using namespace rw::invkin;
 using namespace rw::trajectory;
 
