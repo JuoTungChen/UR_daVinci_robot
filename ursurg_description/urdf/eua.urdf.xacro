@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 
 <robot name="eua" xmlns:xacro="http://ros.org/wiki/xacro">
+
   <xacro:macro name="eua1" params="prefix" >
-    <!-- <link name="${prefix}eua1_base" /> -->
-    <link name="${prefix}eua">
+    <link name="${prefix}eua1">
       <visual>
         <!-- <origin xyz="0 0 0" rpy="0 0 0" /> -->
         <geometry>
@@ -15,4 +15,11 @@
       </visual>
     </link>
   </xacro:macro>
+
+  <xacro:macro name="eua2" params="prefix" >
+    <link name="${prefix}eua2">
+      <!-- TODO -->
+    </link>
+  </xacro:macro>
+
 </robot>
