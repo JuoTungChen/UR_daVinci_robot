@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot name="lnd_test" xmlns:xacro="http://ros.org/wiki/xacro">
+  <link name="world" />
+
+  <xacro:include filename="lnd.urdf.xacro" />
+  <xacro:lnd420006 prefix="lnd_" />
+
+  <joint name="lnd_world" type="fixed">
+    <parent link="world"/>
+    <child link="lnd_base"/>
+    <origin xyz="0 0 0"/>
+  </joint>
+
+</robot>

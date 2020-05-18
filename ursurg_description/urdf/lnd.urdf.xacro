@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+
+<!-- da Vinci Large Needle Driver (LND) model 420006 (S/Si) and 470006 (X/Xi) -->
+<robot name="lnd" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <material name="tip_metallic_gray">
+    <color rgba="0.667 0.663 0.678 1.0" />
+  </material>
+
+  <xacro:macro name="lnd_tip" params="prefix">
+    <link name="${prefix}roll">
+      <visual>
+        <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
+        <geometry>
+          <mesh filename="package://ursurg_description/meshes/lnd_tip/roll.stl" />
+        </geometry>
+        <material name="tip_metallic_gray" />
+      </visual>
+    </link>
+    <link name="${prefix}wrist">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
+        <geometry>
+          <mesh filename="package://ursurg_description/meshes/lnd_tip/wrist.stl" />
+        </geometry>
+        <material name="tip_metallic_gray" />
+      </visual>
+    </link>
+    <link name="${prefix}jaw0" />
+    <link name="${prefix}jaw1">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0" />
+        <geometry>
+          <mesh filename="package://ursurg_description/meshes/lnd_tip/jaw.stl" />
+        </geometry>
+        <material name="tip_metallic_gray" />
+      </visual>
+    </link>
+    <link name="${prefix}jaw2">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0" />
+        <geometry>
+          <mesh filename="package://ursurg_description/meshes/lnd_tip/jaw.stl" />
+        </geometry>
+        <material name="tip_metallic_gray" />
+      </visual>
+    </link>
+    <link name="${prefix}tcp1" />
+    <link name="${prefix}tcp2" />
+
+    <joint name="${prefix}roll_joint" type="revolute">
+      <parent link="${prefix}base" />
+      <child link="${prefix}roll" />
+      <origin xyz="0.467 0 0" rpy="${-pi} ${-pi/2} 0" />
+      <axis xyz="0 0 1" />
+      <limit lower="${radians(-260)}" upper="${radians(260)}" effort="5" velocity="${pi}" />
+    </joint>
+    <joint name="${prefix}wrist_joint" type="revolute">
+      <parent link="${prefix}roll" />
+      <child link="${prefix}wrist" />
+      <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0" />
+      <axis xyz="0 0 1" />
+      <limit lower="${radians(-75)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
+    </joint>
+    <joint name="${prefix}jaw0_joint" type="fixed">
+      <parent link="${prefix}wrist" />
+      <child link="${prefix}jaw0" />
+      <origin xyz="0.0091 0 0" rpy="${pi/2} 0 0" />
+    </joint>
+    <joint name="${prefix}jaw1_joint" type="revolute">
+      <parent link="${prefix}jaw0" />
+      <child link="${prefix}jaw1" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="0 0 1" />
+      <limit lower="${radians(-10)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
+    </joint>
+    <joint name="${prefix}jaw2_joint" type="revolute">
+      <parent link="${prefix}jaw0" />
+      <child link="${prefix}jaw2" />
+      <origin xyz="0 0 0" rpy="${pi} 0 0" />
+      <axis xyz="0 0 1" />
+      <limit lower="${radians(-10)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
+    </joint>
+    <joint name="${prefix}tcp1_joint" type="fixed">
+      <parent link="${prefix}jaw1" />
+      <child link="${prefix}tcp1" />
+      <origin xyz="0.009 0 0" rpy="0 0 0" />
+    </joint>
+    <joint name="${prefix}tcp2_joint" type="fixed">
+      <parent link="${prefix}jaw2" />
+      <child link="${prefix}tcp2" />
+      <origin xyz="0.009 0 0" rpy="0 0 0" />
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="lnd420006" params="prefix">
+    <link name="${prefix}base">
+      <visual>
+        <origin xyz="-0.015 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.096 0.065 0.03" />
+        </geometry>
+        <material name="housing_light_blue">
+          <color rgba="0.500 0.867 1.0 1.0" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0.2285 0 0" rpy="0 ${pi/2} 0" />
+        <geometry>
+          <cylinder radius="0.004" length="0.457" />
+        </geometry>
+        <material name="rod_dark_grey">
+          <color rgba="0.1 0.1 0.1 1.0" />
+        </material>
+      </visual>
+    </link>
+    <xacro:lnd_tip prefix="${prefix}" />
+  </xacro:macro>
+
+  <xacro:macro name="lnd470006" params="prefix">
+    <!-- TODO -->
+    <link name="${prefix}base"></link>
+    <xacro:lnd_tip prefix="${prefix}" />
+  </xacro:macro>
+</robot>

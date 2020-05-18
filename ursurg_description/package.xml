@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>ursurg_description</name>
+    <version>0.1.0</version>
+    <description>The ursurg_description package</description>
+    <maintainer email="kils@mmmi.sdu.dk">Kim Lindberg Schwaner</maintainer>
+    <license>BSD</license>
+    <!-- <url type="website"></url> -->
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <exec_depend>urdf</exec_depend>
+    <exec_depend>xacro</exec_depend>
+</package>
