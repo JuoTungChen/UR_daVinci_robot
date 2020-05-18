@@ -6,8 +6,11 @@
   <material name="tip_metallic_gray">
     <color rgba="0.667 0.663 0.678 1.0" />
   </material>
+  <material name="rod_dark_grey">
+    <color rgba="0.1 0.1 0.1 1.0" />
+  </material>
 
-  <xacro:macro name="lnd_tip" params="prefix">
+  <xacro:macro name="lnd_tip" params="prefix d" >
     <link name="${prefix}roll">
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
@@ -51,7 +54,7 @@
     <joint name="${prefix}roll_joint" type="revolute">
       <parent link="${prefix}base" />
       <child link="${prefix}roll" />
-      <origin xyz="0.467 0 0" rpy="${-pi} ${-pi/2} 0" />
+      <origin xyz="${d} 0 0" rpy="${-pi} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-260)}" upper="${radians(260)}" effort="5" velocity="${pi}" />
     </joint>
@@ -72,14 +75,14 @@
       <child link="${prefix}jaw1" />
       <origin xyz="0 0 0" rpy="0 0 0" />
       <axis xyz="0 0 1" />
-      <limit lower="${radians(-10)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
+      <limit lower="0" upper="${radians(75)}" effort="5" velocity="${pi}" />
     </joint>
     <joint name="${prefix}jaw2_joint" type="revolute">
       <parent link="${prefix}jaw0" />
       <child link="${prefix}jaw2" />
       <origin xyz="0 0 0" rpy="${pi} 0 0" />
       <axis xyz="0 0 1" />
-      <limit lower="${radians(-10)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
+      <limit lower="0" upper="${radians(75)}" effort="5" velocity="${pi}" />
     </joint>
     <joint name="${prefix}tcp1_joint" type="fixed">
       <parent link="${prefix}jaw1" />
@@ -109,17 +112,31 @@
         <geometry>
           <cylinder radius="0.004" length="0.457" />
         </geometry>
-        <material name="rod_dark_grey">
-          <color rgba="0.1 0.1 0.1 1.0" />
-        </material>
+        <material name="rod_dark_grey" />
       </visual>
     </link>
-    <xacro:lnd_tip prefix="${prefix}" />
+    <xacro:lnd_tip prefix="${prefix}" d="0.467" />
   </xacro:macro>
 
   <xacro:macro name="lnd470006" params="prefix">
-    <!-- TODO -->
-    <link name="${prefix}base"></link>
-    <xacro:lnd_tip prefix="${prefix}" />
+    <link name="${prefix}base">
+      <visual>
+        <origin xyz="-0.015 0 -0.019" rpy="0 0 0" />
+        <geometry>
+          <box size="0.06 0.045 0.08" />
+        </geometry>
+        <material name="housing_white">
+          <color rgba="1.0 1.0 1.0 1.0" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0.26675 0 0" rpy="0 ${pi/2} 0" />
+        <geometry>
+          <cylinder radius="0.004" length="0.5335" />
+        </geometry>
+        <material name="rod_dark_grey" />
+      </visual>
+    </link>
+    <xacro:lnd_tip prefix="${prefix}" d="0.5435" />
   </xacro:macro>
 </robot>

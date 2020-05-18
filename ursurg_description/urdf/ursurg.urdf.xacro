@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot name="a_ur5e_eua1_lnd420006" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:property name="prefix1" value="a_" />
+  <!-- <xacro:property name="prefix2" value="b_" /> -->
+
+  <link name="world" />
+
+  <!-- UR5e robot
+       Run xacro with arg 'kinematics_config_file' set to override the default
+       kinematic configuration -->
+  <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
+  <xacro:arg name="kinematics_config_file" default="$(find ur_e_description)/config/ur5e_default.yaml" />
+  <xacro:ur5e_robot prefix="${prefix1}ur_" joint_limited="false" kinematics_file="${load_yaml('$(arg kinematics_config_file)')}" />
+
+  <joint name="${prefix1}world_ur_base" type="fixed">
+    <parent link="world" />
+    <child link="${prefix1}ur_base_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- EUA1 tool adapter -->
+  <xacro:include filename="eua.urdf.xacro" />
+  <xacro:eua1 prefix="${prefix1}" />
+
+  <joint name="${prefix1}ur_eua" type="fixed">
+    <parent link="${prefix1}ur_tool0" />
+    <child link="${prefix1}eua" />
+    <origin xyz="0 0 0.05" rpy="0 ${-pi/2} ${-pi/2}" />
+  </joint>
+
+  <!-- LND 420006 tool -->
+  <xacro:include filename="lnd.urdf.xacro" />
+  <xacro:lnd420006 prefix="${prefix1}tool_" />
+
+  <joint name="${prefix1}eua_tool" type="fixed">
+    <parent link="${prefix1}eua" />
+    <child link="${prefix1}tool_base" />
+    <origin xyz="0.015 0 0.055" rpy="0 0 0" />
+  </joint>
+
+
+</robot>
