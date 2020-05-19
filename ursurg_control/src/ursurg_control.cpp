@@ -1,33 +1,20 @@
-#include <ursurg_common/conversions/robwork.h>
+#include <ursurg_common/conversions/kdl.h>
+#include <ursurg_common/math.h>
 #include <ursurg_common/rosutility.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
-#include "WeightedJacobianIKSolver.hpp" // to be moved to RW later
-#include <rw/invkin/JacobianIKSolver.hpp>
-#include <rw/kinematics/FixedFrame.hpp>
-#include <rw/loaders/WorkCellLoader.hpp>
-#include <rw/models/CompositeJointDevice.hpp>
-#include <rw/models/SerialDevice.hpp>
-#include <rw/models/TreeDevice.hpp>
-#include <rw/models/WorkCell.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/chainiksolverpos_nr_jl.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
+#include <kdl/tree.hpp>
+#include <kdl_parser/kdl_parser.hpp>
+#include <urdf/model.h>
 
 #include <ros/ros.h>
 
 #include <optional>
-
-// Basic rotation about the z axis with angle a
-rw::math::Rotation3D<double> rot_z(double a)
-{
-    auto ca = std::cos(a);
-    auto sa = std::sin(a);
-    // clang-format off
-    return {ca, -sa,  0,
-            sa,  ca,  0,
-            0,   0,   1};
-    // clang-format on
-}
 
 int main(int argc, char* argv[])
 {
@@ -37,46 +24,68 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
-    auto workcell_path = nh_priv.param("rw_workcell_path", ""s);
-    auto robot_name = nh_priv.param("robot_name", ""s);
-    auto tool_name = nh_priv.param("tool_name", ""s);
+    urdf::Model model;
 
-    auto workcell = rw::loaders::WorkCellLoader::Factory::load(workcell_path);
+    if (!model.initParam("robot_description"))
+        throw std::runtime_error("Robot model not found (set the 'robot_description' parameter");
 
-    if (!workcell)
-        throw std::runtime_error("Workcell '" + workcell_path + "' not found");
+    KDL::Tree tree;
 
-    auto robot = workcell->findDevice(robot_name);
-    auto tool = workcell->findDevice(tool_name);
+    if (!kdl_parser::treeFromUrdfModel(model, tree))
+        throw std::runtime_error("Failed to extract KDL tree from robot description");
 
-    if (!robot)
-        throw std::runtime_error("Robot device '" + robot_name + "' not found");
+    auto chain_root = nh_priv.param("chain_root", "ur_base_link"s);
+    auto chain_tip = nh_priv.param("chain_tip", "tool_tcp0"s);
+    KDL::Chain chain;
 
-    if (!tool)
-        throw std::runtime_error("Tool device '" + tool_name + "' not found");
+    if (!tree.getChain(chain_root, chain_tip, chain))
+        throw std::runtime_error("Failed to get kinematic chain between links: " + chain_root + ", " + chain_tip);
 
-    auto tcp = tool->getEnd(); // aka. tool->_ends.front()
+    // Forward kinematics
+    KDL::ChainFkSolverPos_recursive fk_solver(chain);
 
-    ROS_INFO_STREAM("Robot: " << robot->getName());
-    ROS_INFO_STREAM("Tool: " << tool->getName());
-    ROS_INFO_STREAM("TCP: " << tcp->getName());
+    // Inverse velocity kinematics
+    KDL::ChainIkSolverVel_wdls ik_solver_vel(chain);
+    auto weights_js = nh_priv.param("weights_joint_space", std::vector<double>(chain.getNrOfJoints(), 1.0));
+    ik_solver_vel.setWeightJS(Eigen::VectorXd::Map(weights_js.data(), weights_js.size()).asDiagonal());
 
-    // Access to 'state' does not have to be synchronized when processing ROS
-    // callbacks from only a single thread
-    auto state = workcell->getDefaultState();
+    // Find joint limits from URDF model
+    auto [q_min, q_max] = [&]() {
+        KDL::JntArray lower(chain.getNrOfJoints());
+        KDL::JntArray upper(chain.getNrOfJoints());
+        unsigned i = 0;
 
-    // Composite device makes a single entity from the combined robot and tool
-    rw::models::CompositeJointDevice cdev(robot->getBase(),
-                                          {robot, tool},
-                                          tcp,
-                                          robot_name + "_" + tool_name,
-                                          state);
+        for (const auto& seg : chain.segments) {
+            if (seg.getJoint().getType() != KDL::Joint::None) { // A moving joint
+                auto limits = model.getJoint(seg.getJoint().getName())->limits;
+                lower(i) = limits->lower;
+                upper(i) = limits->upper;
+                ++i;
+            }
+        }
 
-    WeightedJacobianIKSolver ik_solver(&cdev, state);
-    ik_solver.setCheckJointLimits(true);
-    ik_solver.setEnableInterpolation(false);
-    auto weights = nh_priv.param("weights", std::vector<double>(cdev.getDOF(), 1.0));
-    ik_solver.setWeightVector(Eigen::VectorXd::Map(weights.data(), weights.size()));
+        return std::make_tuple(lower, upper);
+    }();
+
+    // Inverse position kinematics
+    KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain, q_min, q_max, fk_solver, ik_solver_vel);
+
+    // Current joint state
+    KDL::JntArray q_current(chain.getNrOfJoints());
+
+    // Map to q_current by joint name
+    auto q_current_by_name = [&]() {
+        std::unordered_map<std::string, double*> dict;
+        unsigned i = 0;
+
+        for (const auto& seg : chain.segments) {
+            if (seg.getJoint().getType() != KDL::Joint::None) { // A moving joint
+                dict.emplace(seg.getJoint().getName(), &q_current(i++));
+            }
+        }
+
+        return dict;
+    }();
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
     auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur_move_joint", 1);
@@ -85,16 +94,17 @@ int main(int argc, char* argv[])
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool_servo_joint", 1);
 
     auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
-        auto solutions = ik_solver.solve(convert_to<rw::math::Transform3D<double>>(m.pose), state);
+        KDL::JntArray q;
+        auto error = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q);
 
-        if (solutions.empty()) {
-            ROS_WARN("No IK solutions");
+        if (error < 0) {
+            ROS_WARN_STREAM("IK failed: " << ik_solver_pos.strError(error));
             return {};
         }
 
-        // JacobianIKSolver returns only one solution
-        assert(solutions.front().size() == 10);
-        auto dptr = solutions.front().e().data(); // e() returns ref. to Q::_vec (an Eigen vector)
+        // TODO: TCP between grasper jaws, compute jaw joint angles
+
+        auto dptr = q.data.data();
 
         // The first 6 elements of the solution vector is the robot configuration
         sensor_msgs::JointState m_robot;
@@ -105,29 +115,36 @@ int main(int argc, char* argv[])
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
         m_tool.name = {"roll", "wrist", "jaw1", "jaw2"}; // names matter to the eua_control node
-        std::copy(std::next(dptr, 6), std::next(dptr, 10), std::back_inserter(m_tool.position));
+        std::copy(std::next(dptr, 6), std::next(dptr, 9), std::back_inserter(m_tool.position));
+
+        m_tool.position.push_back(math::radians(10)); // FIXME: Compute real grasper jaw angle
 
         return std::make_pair(m_robot, m_tool);
     };
 
+    auto set_q = [&](const auto& m) {
+        assert(!m.name.empty() && !m.position.empty());
+        assert(m.name.size() == m.position.size());
+
+        for (std::size_t i = 0; i < m.position.size(); ++i) {
+            // *q_current_map.at(m.name[i]) = m.position[i];
+
+            // FIXME: Ignore "unknown" joint names for now because 'tool_jaw2'
+            // is ignored for now
+            auto it = q_current_by_name.find(m.name[i]);
+
+            if (it != q_current_by_name.end())
+                *it->second = m.position[i];
+        }
+    };
+
     std::list<ros::Subscriber> subscribers{
-        mksub<sensor_msgs::JointState>(
-            nh, "ur_joint_states", 1, [&](const auto& m) {
-                robot->setQ(m.position, state);
-            },
-            ros::TransportHints().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "tool_joint_states", 1, [&](const auto& m) {
-                tool->setQ(m.position, state);
-            },
-            ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(nh, "ur_joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(nh, "tool_joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
-                // "move" set-points may lie be anywhere in the workspace, so
-                // enable linear interpolation of via-points toward the target
-                ik_solver.setEnableInterpolation(true);
+                // TODO: Interpolate path if set-point is far from current position
                 auto s = solve_and_make_msgs(m);
-                ik_solver.setEnableInterpolation(false);
 
                 if (s) {
                     pub_robot_move_joint.publish(s->first);
@@ -151,10 +168,14 @@ int main(int argc, char* argv[])
     auto timer = nh.createSteadyTimer(
         ros::WallDuration(1.0 / 100),
         [&](const auto&) {
+            KDL::Frame f;
+            fk_solver.JntToCart(q_current, f);
+
             geometry_msgs::PoseStamped m;
             m.header.stamp = ros::Time::now();
-            m.header.frame_id = cdev.getBase()->getName();
-            m.pose = convert_to<geometry_msgs::Pose>(cdev.baseTend(state));
+            m.header.frame_id = chain_root;
+            m.pose = convert_to<geometry_msgs::Pose>(f);
+
             pub_pose.publish(m);
         });
 
