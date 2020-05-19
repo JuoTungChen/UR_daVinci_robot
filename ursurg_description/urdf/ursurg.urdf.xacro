@@ -19,20 +19,14 @@
     <origin xyz="0.6 -0.2 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- A) EUA1 tool adapter -->
-  <xacro:eua1 prefix="a_" />
-
-  <joint name="a_ur_eua_joint" type="fixed">
-    <parent link="a_ur_tool0" />
-    <child link="a_eua1_robot_mount" />
-  </joint>
-
   <!-- A) LND 420006 tool -->
   <xacro:lnd420006 prefix="a_tool_" />
 
-  <joint name="a_eua1_tool_joint" type="fixed">
-    <parent link="a_eua1_tool_mount" />
+  <joint name="a_ur_tool_joint" type="fixed">
+    <parent link="a_ur_tool0" />
     <child link="a_tool_mount" />
+    <!-- TODO: Measure/calibrate to find this transform accurately -->
+    <origin xyz="0 0.035 0.08" rpy="0 ${-pi/2} ${-pi/2}" />
   </joint>
 
   <!-- B) UR5 robot -->
@@ -46,21 +40,14 @@
     <origin xyz="0.6 -1 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- B) EUA2 tool adapter -->
-  <xacro:eua2 prefix="b_" />
-
-  <joint name="b_ur_eua2_joint" type="fixed">
-    <parent link="b_ur_tool0" />
-    <child link="b_eua2_robot_mount" />
-  </joint>
-
   <!-- B) LND 470006 tool -->
   <xacro:lnd470006 prefix="b_tool_" />
 
   <joint name="b_eua2_tool_joint" type="fixed">
-    <parent link="b_eua2_tool_mount" />
+    <parent link="b_ur_tool0" />
     <child link="b_tool_mount" />
-    <!-- <origin xyz="0.015 0 0.055" rpy="0 0 0" /> -->
+    <!-- TODO: Measure/calibrate to find this transform accurately -->
+    <origin xyz="0 0 0.12" rpy="0 ${-pi/2} ${-pi/2}" />
   </joint>
 
   <!-- Table -->
