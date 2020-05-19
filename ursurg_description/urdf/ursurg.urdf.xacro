@@ -6,7 +6,7 @@
 
   <link name="world" />
 
-  <!-- UR5e robot
+  <!-- A) UR5e robot
        Run xacro with arg 'kinematics_config_file' set to override the default
        kinematic configuration -->
   <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
@@ -16,28 +16,26 @@
   <joint name="a_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="a_ur_base_link" />
-    <origin xyz="0.6 -0.2 0" rpy="0 0 ${-pi/2}" />
+    <origin xyz="0.6 -0.2 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- EUA1 tool adapter -->
+  <!-- A) EUA1 tool adapter -->
   <xacro:eua1 prefix="a_" />
 
   <joint name="a_ur_eua_joint" type="fixed">
     <parent link="a_ur_tool0" />
-    <child link="a_eua1" />
-    <origin xyz="0 0 0.05" rpy="0 ${-pi/2} ${-pi/2}" />
+    <child link="a_eua1_robot_mount" />
   </joint>
 
-  <!-- LND 420006 tool -->
+  <!-- A) LND 420006 tool -->
   <xacro:lnd420006 prefix="a_tool_" />
 
   <joint name="a_eua1_tool_joint" type="fixed">
-    <parent link="a_eua1" />
-    <child link="a_tool_base" />
-    <origin xyz="0.015 0 0.055" rpy="0 0 0" />
+    <parent link="a_eua1_tool_mount" />
+    <child link="a_tool_mount" />
   </joint>
 
-  <!-- UR5 robot -->
+  <!-- B) UR5 robot -->
   <xacro:include filename="$(find ur_description)/urdf/ur5.urdf.xacro" />
   <xacro:arg name="ur5_kinematics_config_file" default="$(find ur_description)/config/ur5_default.yaml" />
   <xacro:ur5_robot prefix="b_ur_" joint_limited="false" kinematics_file="${load_yaml('$(arg ur5_kinematics_config_file)')}" />
@@ -45,26 +43,26 @@
   <joint name="b_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="b_ur_base_link" />
-    <origin xyz="0.6 -1 0" rpy="0 0 ${-pi/2}" />
+    <origin xyz="0.6 -1 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- EUA2 tool adapter -->
+  <!-- B) EUA2 tool adapter -->
   <xacro:eua2 prefix="b_" />
 
   <joint name="b_ur_eua2_joint" type="fixed">
     <parent link="b_ur_tool0" />
-    <child link="b_eua2" />
-    <origin xyz="0 0 0.05" rpy="0 ${-pi/2} ${-pi/2}" />
+    <child link="b_eua2_robot_mount" />
   </joint>
 
-  <!-- LND 470006 tool -->
+  <!-- B) LND 470006 tool -->
   <xacro:lnd470006 prefix="b_tool_" />
 
   <joint name="b_eua2_tool_joint" type="fixed">
-    <parent link="b_eua2" />
-    <child link="b_tool_base" />
-    <origin xyz="0.015 0 0.055" rpy="0 0 0" />
+    <parent link="b_eua2_tool_mount" />
+    <child link="b_tool_mount" />
+    <!-- <origin xyz="0.015 0 0.055" rpy="0 0 0" /> -->
   </joint>
+
   <!-- Table -->
   <link name="table_base">
     <visual>
