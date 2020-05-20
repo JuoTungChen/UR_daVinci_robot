@@ -3,9 +3,10 @@
 
   <!-- Human input devices -->
   <group ns="hid">
-    <node ns="touch" name="touch_control" pkg="touch_control" type="touch_control_node" output="screen">
+    <node ns="touch" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <rosparam param="device_names">["left", "right"]</rosparam>
       <param name="scheduler_rate" value="500" />
+      <param name="publish_rate" value="500" />
     </node>
 
     <node name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
