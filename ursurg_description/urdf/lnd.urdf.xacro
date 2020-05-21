@@ -11,7 +11,7 @@
   </material>
 
   <xacro:macro name="lnd_tip" params="prefix d" >
-    <link name="${prefix}roll">
+    <link name="${prefix}lower_rod">
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
         <geometry>
@@ -57,29 +57,29 @@
 
     <link name="${prefix}tcp2" />
 
-    <joint name="${prefix}roll_joint" type="revolute">
+    <joint name="${prefix}roll" type="revolute">
       <parent link="${prefix}base" />
-      <child link="${prefix}roll" />
+      <child link="${prefix}lower_rod" />
       <origin xyz="${d} 0 0" rpy="${-pi} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-260)}" upper="${radians(260)}" effort="5" velocity="${pi}" />
     </joint>
 
-    <joint name="${prefix}wrist_joint" type="revolute">
-      <parent link="${prefix}roll" />
+    <joint name="${prefix}pitch" type="revolute">
+      <parent link="${prefix}lower_rod" />
       <child link="${prefix}wrist" />
       <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-75)}" upper="${radians(75)}" effort="5" velocity="${pi}" />
     </joint>
 
-    <joint name="${prefix}jaw0_joint" type="fixed">
+    <joint name="${prefix}jaw0_fixed" type="fixed">
       <parent link="${prefix}wrist" />
       <child link="${prefix}jaw0" />
       <origin xyz="0.0091 0 0" rpy="${pi/2} 0 0" />
     </joint>
 
-    <joint name="${prefix}jaw1_joint" type="revolute">
+    <joint name="${prefix}yaw1" type="revolute">
       <parent link="${prefix}jaw0" />
       <child link="${prefix}jaw1" />
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -87,7 +87,7 @@
       <limit lower="0" upper="${radians(75)}" effort="5" velocity="${pi}" />
     </joint>
 
-    <joint name="${prefix}jaw2_joint" type="revolute">
+    <joint name="${prefix}yaw2" type="revolute">
       <parent link="${prefix}jaw0" />
       <child link="${prefix}jaw2" />
       <origin xyz="0 0 0" rpy="${pi} 0 0" />
@@ -95,13 +95,13 @@
       <limit lower="0" upper="${radians(75)}" effort="5" velocity="${pi}" />
     </joint>
 
-    <joint name="${prefix}tcp1_joint" type="fixed">
+    <joint name="${prefix}tcp1_fixed" type="fixed">
       <parent link="${prefix}jaw1" />
       <child link="${prefix}tcp1" />
       <origin xyz="0.009 0 0" rpy="0 0 0" />
     </joint>
 
-    <joint name="${prefix}tcp2_joint" type="fixed">
+    <joint name="${prefix}tcp2_fixed" type="fixed">
       <parent link="${prefix}jaw2" />
       <child link="${prefix}tcp2" />
       <origin xyz="0.009 0 0" rpy="0 0 0" />
