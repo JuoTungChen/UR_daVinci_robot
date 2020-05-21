@@ -32,7 +32,7 @@ template<>
 geometry_msgs::Quaternion convert_to(const KDL::Rotation& rot)
 {
     geometry_msgs::Quaternion m;
-    rot.Quaternion(m.x, m.y, m.z, m.w);
+    rot.GetQuaternion(m.x, m.y, m.z, m.w);
     return m;
 }
 
