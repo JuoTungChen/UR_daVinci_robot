@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
-<robot name="a_ur5e_eua1_lnd420006" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="ursurg" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:include filename="eua.urdf.xacro" />
   <xacro:include filename="lnd.urdf.xacro" />
 
   <link name="world" />
@@ -25,8 +24,8 @@
   <joint name="a_ur_tool_joint" type="fixed">
     <parent link="a_ur_ee_link" />
     <child link="a_tool_mount" />
-    <!-- TODO: Measure/calibrate to find this transform accurately -->
-    <origin xyz="0.08 0 -0.035" rpy="${pi} 0 0" />
+    <!-- TODO: Calibrate to find this transform accurately -->
+    <origin xyz="0.075 0 -0.04" rpy="${pi} 0 0" />
   </joint>
 
   <!-- B) UR5 robot -->
@@ -46,8 +45,8 @@
   <joint name="b_eua2_tool_joint" type="fixed">
     <parent link="b_ur_ee_link" />
     <child link="b_tool_mount" />
-    <!-- TODO: Measure/calibrate to find this transform accurately -->
-    <origin xyz="0.1 0 0" rpy="${pi} 0 0" />
+    <!-- TODO: Calibrate to find this transform accurately -->
+    <origin xyz="0.09 0 0" rpy="${pi} 0 0" />
   </joint>
 
   <!-- Table -->
