@@ -15,7 +15,7 @@ class EUAController(object):
 
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
-        self.joint_names = ('roll_joint', 'wrist_joint', 'jaw1_joint', 'jaw2_joint')
+        self.joint_names = ('roll', 'pitch', 'yaw1', 'yaw2')
         prefix = rospy.get_param('~prefix', '')
         self.joint_names_prefixed = [prefix + n for n in self.joint_names]
         self.joint_device_mapping = rospy.get_param('~joint_device_mapping')
