@@ -34,8 +34,8 @@ int main(int argc, char* argv[])
     if (!kdl_parser::treeFromUrdfModel(model, tree))
         throw std::runtime_error("Failed to extract KDL tree from robot description");
 
-    auto chain_root = nh_priv.param("chain_root", "ur_base_link"s);
-    auto chain_tip = nh_priv.param("chain_tip", "tool_tcp0"s);
+    auto chain_root = nh_priv.param("ur_prefix", ""s) + "base_link";
+    auto chain_tip = nh_priv.param("tool_prefix", ""s) + "jaw0";
     KDL::Chain chain;
 
     if (!tree.getChain(chain_root, chain_tip, chain))
@@ -88,13 +88,13 @@ int main(int argc, char* argv[])
     }();
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
-    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur_move_joint", 1);
-    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur_servo_joint", 1);
-    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool_move_joint", 1);
-    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool_servo_joint", 1);
+    auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur/move_joint", 1);
+    auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur/servo_joint", 1);
+    auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
+    auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
     auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
-        KDL::JntArray q;
+        KDL::JntArray q(chain.getNrOfJoints());
         auto error = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q);
 
         if (error < 0) {
@@ -139,8 +139,8 @@ int main(int argc, char* argv[])
     };
 
     std::list<ros::Subscriber> subscribers{
-        mksub<sensor_msgs::JointState>(nh, "ur_joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(nh, "tool_joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(nh, "ur/joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(nh, "tool/joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
                 // TODO: Interpolate path if set-point is far from current position
