@@ -2,9 +2,9 @@
 
 <robot name="eua" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="eua1" params="prefix" >
-    <link name="${prefix}eua1_robot_mount" />
+    <link name="${prefix}robot_mount" />
 
-    <link name="${prefix}eua1_base">
+    <link name="${prefix}base">
       <visual>
         <geometry>
           <box size="0.07 0.17 0.08" />
@@ -15,39 +15,39 @@
       </visual>
     </link>
 
-    <link name="${prefix}eua1_tool_mount" />
+    <link name="${prefix}tool_mount" />
 
-    <joint name="${prefix}eua1_robot_mount_base_joint" type="fixed">
-      <parent link="${prefix}eua1_robot_mount" />
-      <child link="${prefix}eua1_base" />
+    <joint name="${prefix}robot_mount_base_joint" type="fixed">
+      <parent link="${prefix}robot_mount" />
+      <child link="${prefix}base" />
       <origin xyz="0.035 0 0.04" rpy="0 ${-pi/2} ${-pi/2}" />
     </joint>
 
-    <joint name="${prefix}eua1_base_tool_mount_joint" type="fixed">
-      <parent link="${prefix}eua1_base" />
-      <child link="${prefix}eua1_tool_mount" />
+    <joint name="${prefix}base_tool_mount_joint" type="fixed">
+      <parent link="${prefix}base" />
+      <child link="${prefix}tool_mount" />
       <origin xyz="0 0 0.04" rpy="0 0 0" />
     </joint>
   </xacro:macro>
 
   <xacro:macro name="eua2" params="prefix" >
-    <link name="${prefix}eua2_robot_mount" />
+    <link name="${prefix}robot_mount" />
 
-    <link name="${prefix}eua2_base">
+    <link name="${prefix}base">
       <!-- TODO -->
     </link>
 
-    <link name="${prefix}eua2_tool_mount" />
+    <link name="${prefix}tool_mount" />
 
-    <joint name="${prefix}eua2_robot_mount_base_joint" type="fixed">
-      <parent link="${prefix}eua2_robot_mount" />
-      <child link="${prefix}eua2_base" />
+    <joint name="${prefix}robot_mount_base_joint" type="fixed">
+      <parent link="${prefix}robot_mount" />
+      <child link="${prefix}base" />
       <origin xyz="0 0 0.08" rpy="0 ${-pi/2} ${pi/2}" />
     </joint>
 
-    <joint name="${prefix}eua2_base_tool_mount_joint" type="fixed">
-      <parent link="${prefix}eua2_base" />
-      <child link="${prefix}eua2_tool_mount" />
+    <joint name="${prefix}base_tool_mount_joint" type="fixed">
+      <parent link="${prefix}base" />
+      <child link="${prefix}tool_mount" />
     </joint>
   </xacro:macro>
 </robot>
