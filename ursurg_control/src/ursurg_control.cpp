@@ -27,15 +27,24 @@ int main(int argc, char* argv[])
     urdf::Model model;
 
     if (!model.initParam("robot_description"))
-        throw std::runtime_error("Robot model not found (set the 'robot_description' parameter");
+        throw std::runtime_error("Robot model not found (set the 'robot_description' parameter)");
 
     KDL::Tree tree;
 
     if (!kdl_parser::treeFromUrdfModel(model, tree))
         throw std::runtime_error("Failed to extract KDL tree from robot description");
 
-    auto chain_root = nh_priv.param("ur_prefix", ""s) + "base_link";
-    auto chain_tip = nh_priv.param("tool_prefix", ""s) + "jaw0";
+    auto ur_prefix = nh_priv.param("ur_prefix", ""s);
+    auto tool_prefix = nh_priv.param("tool_prefix", ""s);
+    std::vector<std::string> ur_joint_names; // FIXME
+    std::vector<std::string> tool_joint_names;
+
+    for (const auto& name : {"roll", "pitch", "yaw1", "yaw2"}) {
+        tool_joint_names.push_back(tool_prefix + name);
+    }
+
+    auto chain_root = ur_prefix + "base_link";
+    auto chain_tip = tool_prefix + "jaw0";
     KDL::Chain chain;
 
     if (!tree.getChain(chain_root, chain_tip, chain))
@@ -109,12 +118,13 @@ int main(int argc, char* argv[])
         // The first 6 elements of the solution vector is the robot configuration
         sensor_msgs::JointState m_robot;
         m_robot.header.stamp = ros::Time::now();
+        // FIXME joint names
         std::copy(dptr, std::next(dptr, 6), std::back_inserter(m_robot.position));
 
         // and the last 4 is the tool configuration
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
-        m_tool.name = {"roll", "wrist", "jaw1", "jaw2"}; // names matter to the eua_control node
+        m_tool.name = tool_joint_names;
         std::copy(std::next(dptr, 6), std::next(dptr, 9), std::back_inserter(m_tool.position));
 
         m_tool.position.push_back(math::radians(10)); // FIXME: Compute real grasper jaw angle
