@@ -15,10 +15,9 @@ class EUAController(object):
 
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
-        self.joint_names = ('roll', 'pitch', 'yaw1', 'yaw2')
         prefix = rospy.get_param('~prefix', '')
-        self.joint_names_prefixed = [prefix + n for n in self.joint_names]
-        self.joint_device_mapping = rospy.get_param('~joint_device_mapping')
+        self.joint_names = [prefix + n for n in ('roll', 'pitch', 'yaw1', 'yaw2')]
+        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').iteritems()}
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
@@ -116,7 +115,7 @@ class EUAController(object):
     def compute_joint_state(self, servo_state):
         s = JointState()
         s.header.stamp = servo_state.header.stamp
-        s.name = self.joint_names_prefixed
+        s.name = self.joint_names
         s.position = self.K.dot(servo_state.position)
         s.velocity = self.K.dot(servo_state.velocity)
         s.effort = self.K.dot(servo_state.effort)
