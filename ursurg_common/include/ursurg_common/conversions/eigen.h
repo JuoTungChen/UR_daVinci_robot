@@ -84,6 +84,18 @@ Eigen::Translation3d convert_to(const geometry_msgs::Point& m)
 }
 
 template<>
+Eigen::Vector3d convert_to(const geometry_msgs::Vector3& m)
+{
+    return {m.x, m.y, m.z};
+}
+
+template<>
+Eigen::Translation3d convert_to(const geometry_msgs::Vector3& m)
+{
+    return {m.x, m.y, m.z};
+}
+
+template<>
 Eigen::Quaterniond convert_to(const geometry_msgs::Quaternion& m)
 {
     return {m.w, m.x, m.y, m.z};
@@ -94,5 +106,13 @@ Eigen::Isometry3d convert_to(const geometry_msgs::Pose& m)
 {
     auto p = convert_to<Eigen::Translation3d>(m.position);
     auto q = convert_to<Eigen::Quaterniond>(m.orientation);
+    return p * q;
+}
+
+template<>
+Eigen::Isometry3d convert_to(const geometry_msgs::Transform& m)
+{
+    auto p = convert_to<Eigen::Translation3d>(m.translation);
+    auto q = convert_to<Eigen::Quaterniond>(m.rotation);
     return p * q;
 }
