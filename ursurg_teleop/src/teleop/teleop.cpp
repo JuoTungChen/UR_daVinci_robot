@@ -5,71 +5,47 @@
 #include <std_msgs/Bool.h>
 
 #include <ros/ros.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <Eigen/Geometry>
 
-struct Pose
-{
-    Eigen::Translation3d translation;
-    Eigen::Quaterniond orientation;
-
-    Pose() = default;
-
-    Pose(const Eigen::Translation3d& tra, const Eigen::Quaterniond& ori)
-        : translation(tra)
-        , orientation(ori)
-    {}
-
-    Pose(Eigen::Translation3d&& tra, Eigen::Quaterniond&& ori)
-        : translation(std::move(tra))
-        , orientation(std::move(ori))
-    {}
-
-    Pose(const Eigen::Isometry3d& tf)
-        : translation(tf.translation())
-        , orientation(tf.linear())
-    {}
-
-    Pose(const geometry_msgs::Pose& pose)
-        : translation(convert_to<Eigen::Translation3d>(pose.position))
-        , orientation(convert_to<Eigen::Quaterniond>(pose.orientation))
-    {}
-
-    Eigen::Isometry3d tf() const
-    {
-        return translation * orientation;
-    }
-
-
-    static Pose Identity()
-    {
-        return {Eigen::Translation3d::Identity(), Eigen::Quaterniond::Identity()};
-    }
-};
+#include <chrono>
+#include <thread>
 
 int main(int argc, char* argv[])
 {
+    using namespace std::chrono_literals;
+    using namespace std::string_literals;
+
     ros::init(argc, argv, "teleop");
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
     bool clutch_engaged = false;
-
     std::string pose_tcp_frame_id;
-    Eigen::Isometry3d t_tcp_current = Eigen::Isometry3d::Identity();
-    Eigen::Isometry3d t_tcp_desired = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d t_robotbase_robottcp_current = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d t_robotbase_robottcp_desired = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d t_robotbase_haptictcp_current = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d t_robotbase_haptictcp_last = Eigen::Isometry3d::Identity();
 
-    Pose pose_haptic_current = Pose::Identity();
-    Pose pose_haptic_last = Pose::Identity();
+    auto t_robotbase_hapticbase = [&]() {
+        tf2_ros::Buffer tf_buffer;
+        tf2_ros::TransformListener tf_listener(tf_buffer);
+        auto robot_base = nh_priv.param("ur_prefix", ""s) + "base_link";
+        auto haptic_base = nh_priv.param("haptic_prefix", ""s) + "base";
+        auto deadline = std::chrono::steady_clock::now() + 5s;
 
-    // TODO: read this transform from "static TF" topic
-    Eigen::Isometry3d t_touch_base = Eigen::Isometry3d::Identity();
-    // clang-format off
-    t_touch_base.linear() << 1,  0,  0,
-                             0,  0,  1,
-                             0, -1,  0;
-    // clang-format on
-    Eigen::Isometry3d t_base_touch = t_touch_base.inverse();
+        while (std::chrono::steady_clock::now() < deadline) {
+            try {
+                auto tf = tf_buffer.lookupTransform(robot_base, haptic_base, ros::Time());
+                return convert_to<Eigen::Isometry3d>(tf.transform);
+            } catch (const tf2::LookupException&) {
+                std::this_thread::sleep_for(200ms);
+            }
+        }
+
+        throw std::runtime_error("Failed to get transform from '" + robot_base + "' to '" + haptic_base + "'");
+    }();
 
     auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
 
@@ -78,33 +54,32 @@ int main(int argc, char* argv[])
             nh, "clutch_engaged", 4, [&](const auto& m) {
                 clutch_engaged = m.data;
 
-                // Initially set desired=current
+                // Initially: desired robot TCP <- current robot TCP
                 if (clutch_engaged)
-                    t_tcp_desired = t_tcp_current;
+                    t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "tcp_pose_current", 1, [&](const auto& m) {
+                // Cache the most recent robot TCP pose
+                t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.pose);
                 pose_tcp_frame_id = m.header.frame_id;
-                t_tcp_current = convert_to<Eigen::Isometry3d>(m.pose);
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "haptic_pose", 1, [&](const auto& m) {
-                pose_haptic_last = std::move(pose_haptic_current);
-                pose_haptic_current = m.pose;
+                t_robotbase_haptictcp_last = std::move(t_robotbase_haptictcp_current);
+
+                // Transform incoming haptic TCP poses seen wrt. haptic base
+                // frame to the robot base coordinate system
+                t_robotbase_haptictcp_current = t_robotbase_hapticbase * convert_to<Eigen::Isometry3d>(m.pose);
 
                 if (clutch_engaged) {
-                    // Compute diff
-                    Pose diff(pose_haptic_last.translation.inverse() * pose_haptic_current.translation,
-                              pose_haptic_last.orientation.inverse() * pose_haptic_current.orientation);
+                    // Transform from the previous to the current haptic pose
+                    Eigen::Isometry3d t_incr = t_robotbase_haptictcp_last.inverse() * t_robotbase_haptictcp_current;
 
-                    // Change of basis
-                    Eigen::Isometry3d t_incr = t_base_touch * diff.tf() * t_touch_base;
-
-                    // Accumulate translation and rotation separately
-                    t_tcp_desired.translation() += t_incr.translation();
-                    t_tcp_desired.linear() = t_incr.linear() * t_tcp_desired.linear();
+                    // "added to" the desired robot TCP pose
+                    t_robotbase_robottcp_desired = t_robotbase_robottcp_desired * t_incr;
                 }
             },
             ros::TransportHints().tcpNoDelay()),
@@ -117,7 +92,7 @@ int main(int argc, char* argv[])
                 geometry_msgs::PoseStamped m;
                 m.header.stamp = ros::Time::now();
                 m.header.frame_id = pose_tcp_frame_id;
-                m.pose = convert_to<geometry_msgs::Pose>(t_tcp_desired);
+                m.pose = convert_to<geometry_msgs::Pose>(t_robotbase_robottcp_desired);
                 pub_pose_desired.publish(m);
 
                 // TODO buttons -> grasper angle
