@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+
+<launch>
+  <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
+    <param name="publish_frequency" value="25" />
+  </node>
+
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="screen">
+    <param name="rate" value="25" />
+    <param name="publish_default_positions" value="false" />
+    <rosparam>
+      source_list:
+        - a/ur/joint_states
+        - a/tool/joint_states
+        - b/ur/joint_states
+        - b/tool/joint_states
+        - hid/touch/left/joint_states
+        - hid/touch/right/joint_states
+    </rosparam>
+  </node>
+
+  <group ns="a">
+    <!-- Arm a (left): UR5e + EUA1 -->
+    <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
+      <param name="hostname" value="ursim-1" />
+      <param name="prefix" value="a_ur_" />
+    </node>
+
+    <node ns="tool" name="eua1_controller_sim" pkg="eua_control" type="eua1_controller_sim" output="screen">
+      <param name="prefix" value="a_tool_" />
+      <rosparam>
+        joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
+      </rosparam>
+    </node>
+
+    <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
+      <param name="ur_prefix" value="a_ur_" />
+      <param name="tool_prefix" value="a_tool_" />
+      <!-- <param name="weights" value="[1 1 1 1 1 1 1 1" /> -->
+    </node>
+
+    <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
+      <param name="publish_rate" value="125" />
+      <param name="ur_prefix" value="a_ur_" />
+      <param name="haptic_prefix" value="touch_left_" />
+      <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
+      <remap from="clutch_engaged" to="/hid/clutch_engaged" />
+      <remap from="tcp_pose_desired" to="servo_joint_ik" />
+    </node>
+  </group>
+
+  <group ns="b">
+    <!-- Arm b (right): UR5 + EUA2 -->
+    <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
+      <param name="hostname" value="ursim-2" />
+      <param name="prefix" value="b_ur_" />
+    </node>
+
+    <node ns="tool" name="eua1_controller_sim" pkg="eua_control" type="eua1_controller_sim" output="screen">
+      <param name="prefix" value="b_tool_" />
+      <rosparam>
+        joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
+      </rosparam>
+    </node>
+
+    <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
+      <param name="ur_prefix" value="b_ur_" />
+      <param name="tool_prefix" value="b_tool_" />
+      <!-- <param name="weights" value="[0.5 0.5 0.5 0.7 0.7 0.7 1 1" /> -->
+    </node>
+
+    <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
+      <param name="publish_rate" value="125" />
+      <param name="ur_prefix" value="b_ur_" />
+      <param name="haptic_prefix" value="touch_right_" />
+      <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
+      <remap from="clutch_engaged" to="/hid/clutch_engaged" />
+      <remap from="tcp_pose_desired" to="servo_joint_ik" />
+    </node>
+  </group>
+
+</launch>
+
