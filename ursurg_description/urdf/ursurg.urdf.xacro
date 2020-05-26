@@ -68,17 +68,8 @@
   </joint>
 
   <!-- Touch haptic devices -->
-  <xacro:property name="touch_descr" value="$(find touch_description)/urdf/touch.urdf.xacro" />
-
-  <xacro:if value="${len(touch_descr) == 0}">
-    <link name="touch_left_base" />
-    <link name="touch_right_base" />
-  </xacro:if>
-  <xacro:unless value="${len(touch_descr) == 0}">
-    <xacro:include filename="${touch_descr}" />
-    <xacro:touch prefix="touch_left_" />
-    <xacro:touch prefix="touch_right_" />
-  </xacro:unless>
+  <link name="touch_left_base" />
+  <link name="touch_right_base" />
 
   <joint name="world_touch_left_fixed" type="fixed">
     <parent link="world" />
