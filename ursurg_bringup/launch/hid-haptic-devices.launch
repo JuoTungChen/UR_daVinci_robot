@@ -8,7 +8,6 @@
       <param name="prefix" value="touch_" />
       <param name="scheduler_rate" value="500" />
       <param name="publish_rate" value="500" />
-      <param name="publish_joint_states" value="true" />
     </node>
 
     <node name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />

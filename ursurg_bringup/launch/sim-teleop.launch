@@ -16,8 +16,6 @@
         - a/tool/joint_states
         - b/ur/joint_states
         - b/tool/joint_states
-        - hid/touch/left/joint_states
-        - hid/touch/right/joint_states
     </rosparam>
   </node>
 
