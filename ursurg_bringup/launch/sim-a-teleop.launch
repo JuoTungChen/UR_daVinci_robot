@@ -3,22 +3,25 @@
 <launch>
   <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro"/>
 
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" />
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
+    <param name="publish_frequency" value="25" />
+  </node>
 
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="screen">
-    <param name="rate" value="50" />
+    <param name="rate" value="25" />
     <param name="publish_default_positions" value="false" />
     <rosparam>
       source_list:
         - a/ur/joint_states
         - a/tool/joint_states
+        - hid/touch/left/joint_states
     </rosparam>
   </node>
 
   <group ns="a">
-    <!-- UR5 + EUA1 -->
+    <!-- Arm a (left): UR5e + EUA1 -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
-      <param name="hostname" value="ursim" />
+      <param name="hostname" value="ursim-1" />
       <param name="prefix" value="a_ur_" />
     </node>
 
@@ -32,12 +35,14 @@
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
       <param name="ur_prefix" value="a_ur_" />
       <param name="tool_prefix" value="a_tool_" />
-      <!-- <param name="weights" value="[1.1 1.1 1.1 1.1 1.1 1.1 1 1 1 1" /> -->
+      <!-- <rosparam param="weights_joint_space">[1, 1, 1, 1, 1, 1, 1, 1]</rosparam> -->
     </node>
 
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
       <param name="publish_rate" value="125" />
-      <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
+      <param name="ur_prefix" value="a_ur_" />
+      <param name="haptic_prefix" value="touch_left_" />
+      <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
     </node>
