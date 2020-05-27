@@ -36,12 +36,15 @@ int main(int argc, char* argv[])
 
     auto ur_prefix = nh_priv.param("ur_prefix", ""s);
     auto tool_prefix = nh_priv.param("tool_prefix", ""s);
-    std::vector<std::string> ur_joint_names; // FIXME
-    std::vector<std::string> tool_joint_names;
+    // TODO: std::vector<std::string> ur_joint_names;
+    auto tool_joint_names = [&]() {
+        std::vector<std::string> names;
 
-    for (const auto& name : {"roll", "pitch", "yaw1", "yaw2"}) {
-        tool_joint_names.push_back(tool_prefix + name);
-    }
+        for (const auto& name : {"roll", "pitch", "yaw1", "yaw2"})
+            names.push_back(tool_prefix + name);
+
+        return names;
+    }();
 
     auto chain_root = ur_prefix + "base_link";
     auto chain_tip = tool_prefix + "jaw0";
@@ -49,6 +52,22 @@ int main(int argc, char* argv[])
 
     if (!tree.getChain(chain_root, chain_tip, chain))
         throw std::runtime_error("Failed to get kinematic chain between links: " + chain_root + ", " + chain_tip);
+
+    // Add a virtual TCP frame to be placed between the grasper jaws
+    chain_tip = ur_prefix + "tcp0";
+    chain.addSegment(KDL::Segment(KDL::Joint(chain_tip, KDL::Joint::RotZ),
+                                  KDL::Frame(KDL::Vector(0.009, 0, 0))));
+
+    // Vector of pointers to the movable joints of the kinematic chain
+    auto movable_joints = [&]() {
+        std::vector<const KDL::Joint*> segments;
+
+        for (const auto& seg : chain.segments)
+            if (seg.getJoint().getType() != KDL::Joint::None)
+                segments.push_back(&seg.getJoint());
+
+        return segments;
+    }();
 
     // Forward kinematics
     KDL::ChainFkSolverPos_recursive fk_solver(chain);
@@ -64,13 +83,25 @@ int main(int argc, char* argv[])
         KDL::JntArray upper(chain.getNrOfJoints());
         unsigned i = 0;
 
-        for (const auto& seg : chain.segments) {
-            if (seg.getJoint().getType() != KDL::Joint::None) { // A moving joint
-                auto limits = model.getJoint(seg.getJoint().getName())->limits;
+        for (auto joint : movable_joints) {
+            auto model_joint = model.getJoint(joint->getName());
+
+            if (model_joint) {
+                // Joint was found in URDF model
+                auto limits = model_joint->limits;
                 lower(i) = limits->lower;
                 upper(i) = limits->upper;
-                ++i;
+            } else {
+                // Hacky-hack
+                if (joint->getName() == chain_tip) {
+                    lower(i) = math::radians(-45);
+                    upper(i) = math::radians(45);
+                } else {
+                    throw std::runtime_error("Joint '" + joint->getName() + "' has no limits!?");
+                }
             }
+
+            ++i;
         }
 
         return std::make_tuple(lower, upper);
@@ -79,19 +110,26 @@ int main(int argc, char* argv[])
     // Inverse position kinematics
     KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain, q_min, q_max, fk_solver, ik_solver_vel);
 
-    // Current joint state
+    // Current state
     KDL::JntArray q_current(chain.getNrOfJoints());
+    std::array<double, 2> q_yaw{}; // grasper joints (yaw1, yaw2) are not part of 'chain'
+
+    // Desired state
+    double grasp_desired = math::radians(60); // TODO: set through topic
+    // TODO: use q_desired instead of q_solution for initial IK solver q?
+    // KDL::JntArray q_desired(chain.getNrOfJoints());
 
     // Map to q_current by joint name
     auto q_current_by_name = [&]() {
         std::unordered_map<std::string, double*> dict;
         unsigned i = 0;
 
-        for (const auto& seg : chain.segments) {
-            if (seg.getJoint().getType() != KDL::Joint::None) { // A moving joint
-                dict.emplace(seg.getJoint().getName(), &q_current(i++));
-            }
-        }
+        for (auto joint : movable_joints)
+            dict.emplace(joint->getName(), &q_current(i++));
+
+        // Also map grasper joint states (yaw1, yaw2) that are not part of 'chain'
+        dict.emplace(tool_joint_names[2], &q_yaw[0]);
+        dict.emplace(tool_joint_names[3], &q_yaw[1]);
 
         return dict;
     }();
@@ -102,17 +140,19 @@ int main(int argc, char* argv[])
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
-    auto solve_and_make_msgs = [&](const auto& m) -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
-        KDL::JntArray q(chain.getNrOfJoints());
-        auto error = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q);
+    auto solve_ik = [&](const auto& m) -> std::optional<KDL::JntArray> {
+        KDL::JntArray q_solution(chain.getNrOfJoints());
+        auto retval = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q_solution);
 
-        if (error < 0) {
-            ROS_WARN_STREAM("IK failed: " << ik_solver_pos.strError(error));
+        if (retval < 0) {
+            ROS_WARN_STREAM("IK failed: " << ik_solver_pos.strError(retval));
             return {};
         }
 
-        // TODO: TCP between grasper jaws, compute jaw joint angles
+        return q_solution;
+    };
 
+    auto make_msgs = [&](const KDL::JntArray& q, double grasp) {
         auto dptr = q.data.data();
 
         // The first 6 elements of the solution vector is the robot configuration
@@ -125,56 +165,56 @@ int main(int argc, char* argv[])
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
         m_tool.name = tool_joint_names;
-        std::copy(std::next(dptr, 6), std::next(dptr, 9), std::back_inserter(m_tool.position));
+        m_tool.position.push_back(q(6));
+        m_tool.position.push_back(q(7));
+        m_tool.position.push_back(q(8) + grasp / 2);
+        m_tool.position.push_back(-q(8) + grasp / 2);
 
-        m_tool.position.push_back(math::radians(10)); // FIXME: Compute real grasper jaw angle
-
-        return std::make_pair(m_robot, m_tool);
-    };
-
-    auto set_q = [&](const auto& m) {
-        assert(!m.name.empty() && !m.position.empty());
-        assert(m.name.size() == m.position.size());
-
-        for (std::size_t i = 0; i < m.position.size(); ++i) {
-            // *q_current_map.at(m.name[i]) = m.position[i];
-
-            // FIXME: Ignore "unknown" joint names for now because 'tool_jaw2'
-            // is ignored for now
-            auto it = q_current_by_name.find(m.name[i]);
-
-            if (it != q_current_by_name.end())
-                *it->second = m.position[i];
-        }
+        return std::make_tuple(m_robot, m_tool);
     };
 
     std::list<ros::Subscriber> subscribers{
-        mksub<sensor_msgs::JointState>(nh, "ur/joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(nh, "tool/joint_states", 1, set_q, ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "ur/joint_states", 1, [&](const auto& m) {
+                for (std::size_t i = 0; i < m.position.size(); ++i)
+                    *q_current_by_name.at(m.name[i]) = m.position[i];
+            },
+            ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "tool/joint_states", 1, [&](const auto& m) {
+                for (std::size_t i = 0; i < m.position.size(); ++i)
+                    *q_current_by_name.at(m.name[i]) = m.position[i];
+
+                // Tip TCP joint state is between the two grasper jaws
+                *q_current_by_name.at(chain_tip) = (q_yaw[1] - q_yaw[0]) / 2;
+            },
+            ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
                 // TODO: Interpolate path if set-point is far from current position
-                auto s = solve_and_make_msgs(m);
+                auto q = solve_ik(m);
 
-                if (s) {
-                    pub_robot_move_joint.publish(s->first);
-                    pub_tool_move_joint.publish(s->second);
+                if (q) {
+                    auto [m_robot, m_tool] = make_msgs(*q, grasp_desired);
+                    pub_robot_move_joint.publish(m_robot);
+                    pub_tool_move_joint.publish(m_tool);
                 }
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
-                auto s = solve_and_make_msgs(m);
+                auto q = solve_ik(m);
 
-                if (s) {
-                    pub_robot_servo_joint.publish(s->first);
-                    pub_tool_servo_joint.publish(s->second);
+                if (q) {
+                    auto [m_robot, m_tool] = make_msgs(*q, grasp_desired);
+                    pub_robot_servo_joint.publish(m_robot);
+                    pub_tool_servo_joint.publish(m_tool);
                 }
             },
             ros::TransportHints().tcpNoDelay()),
     };
 
-    // Schedule timer to publish robot state
+    // Schedule timer to publish TCP pose
     auto timer = nh.createSteadyTimer(
         ros::WallDuration(1.0 / 100),
         [&](const auto&) {
