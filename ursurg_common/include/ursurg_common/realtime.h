@@ -1,7 +1,6 @@
 #pragma once
 
 #include <system_error>
-#include <thread>
 
 #include <malloc.h>
 #include <sys/mman.h>
