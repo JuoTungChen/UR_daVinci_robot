@@ -5,6 +5,5 @@ import rospy
 
 
 if __name__ == '__main__':
-    rospy.init_node('eua_control', disable_signals=True)
-    controller = eua_control.EUAController()
+    controller = eua_control.EUAControlNode()
     controller.run()

@@ -1,17 +1,18 @@
 from __future__ import division, print_function
 
 from sensor_msgs.msg import JointState
-import dynamixel
+
 import itertools
 import numpy as np
 import reflexxes
 import rospy
-# import yaml
 
 
-class EUAController(object):
+class EUAControlNode(object):
     def __init__(self):
+        rospy.init_node('eua_control', disable_signals=True)
         self.loop_rate_hz = 100.0
+        self.simulated = rospy.get_param('~simulated', False)
 
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
@@ -20,19 +21,6 @@ class EUAController(object):
         self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').iteritems()}
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
-
-        # Find Dynamixel servo devices
-        self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
-
-        if not self.chain.devices:
-            raise RuntimeError("No devices found")
-
-        for dev in self.chain.devices:
-            rospy.loginfo("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
-            # print(yaml.dump(dev.dump_cc(), default_flow_style=False))
-
-        if len(self.joint_names) != len(self.chain.devices) != 4:
-            raise RuntimeError("Not all devices found")
 
         # Transmission/coupling matrix K
         t0 = 1.5     # motor-to-disc transmission (for all motors)
@@ -47,14 +35,40 @@ class EUAController(object):
             [  0,  -t2*w,  0,   t3  ],
         ])
 
-        # Calibration offset (default to zero at servo center position)
-        self.servo_limits_lower = np.array([dev.read_param_single('cw_angle_limit') for dev in self.chain.devices])
-        self.servo_limits_upper = np.array([dev.read_param_single('ccw_angle_limit') for dev in self.chain.devices])
-        servo_center = self.servo_limits_lower + (self.servo_limits_upper - self.servo_limits_lower) / 2
-        # self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', servo_center.tolist()))  # rosparam doesn't like ndarrays
-        self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', [0]*4))  # rosparam doesn't like ndarrays
-        self.servo_limits_lower -= self.servo_calibration_offset
-        self.servo_limits_upper -= self.servo_calibration_offset
+        if self.simulated:
+            # Current state of the "simulated" EUA/tool
+            self.current_position_servo = np.full(4, np.radians(150))
+            self.current_velocity_servo = np.zeros(4)
+            self.current_effort_servo = np.zeros(4)
+
+            # Calibration offset (default to zero at servo center position)
+            self.servo_calibration_offset = np.full(4, np.radians(150))
+        else:
+            import dynamixel
+
+            # Find Dynamixel servo devices
+            self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
+
+            if not self.chain.devices:
+                raise RuntimeError("No devices found")
+
+            for dev in self.chain.devices:
+                rospy.loginfo("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
+                # import yaml
+                # print(yaml.dump(dev.dump_cc(), default_flow_style=False))
+
+            if len(self.joint_names) != len(self.chain.devices) != 4:
+                raise RuntimeError("Not all devices found")
+
+            # Calibration offset (default to zero at servo center position)
+            servo_limits_lower = np.array([dev.read_param_single('cw_angle_limit') for dev in self.chain.devices])
+            servo_limits_upper = np.array([dev.read_param_single('ccw_angle_limit') for dev in self.chain.devices])
+            servo_center = servo_limits_lower + (servo_limits_upper - servo_limits_lower) / 2
+            self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', servo_center.tolist()))  # rosparam doesn't like ndarrays
+            # self.servo_calibration_offset = np.array(rospy.get_param('/eua/servo_calibration_offset', [0]*4))  # rosparam doesn't like ndarrays
+            # self.servo_limits_lower -= self.servo_calibration_offset
+            # self.servo_limits_upper -= self.servo_calibration_offset
+
         rospy.loginfo("Calibration offset (servo space): {} deg.".format(np.degrees(self.servo_calibration_offset)))
 
         # Trajectory generation
@@ -91,21 +105,26 @@ class EUAController(object):
         s = JointState(position=np.empty(4), velocity=np.empty(4), effort=np.empty(4))
         s.header.stamp = rospy.Time.now()
 
-        for i, dev in enumerate(self.chain.devices):
-            s.name.append(str(dev.id))
+        if self.simulated:
+            np.copyto(s.position, self.current_position_servo)
+            np.copyto(s.velocity, self.current_velocity_servo)
+            np.copyto(s.effort, self.current_effort_servo)
+        else:
+            for i, dev in enumerate(self.chain.devices):
+                s.name.append(str(dev.id))
 
-            if isinstance(dev, dynamixel.device.AX12):
-                d = dev.read_params(['present_position', 'present_speed', 'present_load'])
-                s.position[i] = d['present_position']
-                s.velocity[i] = d['present_speed']
-                s.effort[i] = d['present_load']
-            elif isinstance(dev, dynamixel.device.MX28_2):
-                d = dev.read_params(['present_load', 'present_velocity', 'present_position'])
-                s.position[i] = d['present_position']
-                s.velocity[i] = d['present_velocity']
-                s.effort[i] = d['present_load']
-            else:
-                raise RuntimeError("Unknown device type '{}' in chain".format(type(dev)))
+                if isinstance(dev, dynamixel.device.AX12):
+                    d = dev.read_params(['present_position', 'present_speed', 'present_load'])
+                    s.position[i] = d['present_position']
+                    s.velocity[i] = d['present_speed']
+                    s.effort[i] = d['present_load']
+                elif isinstance(dev, dynamixel.device.MX28_2):
+                    d = dev.read_params(['present_load', 'present_velocity', 'present_position'])
+                    s.position[i] = d['present_position']
+                    s.velocity[i] = d['present_velocity']
+                    s.effort[i] = d['present_load']
+                else:
+                    raise RuntimeError("Unknown device type '{}' in chain".format(type(dev)))
 
         # Subtract calibration offset from servo positions
         s.position -= self.servo_calibration_offset
@@ -128,11 +147,14 @@ class EUAController(object):
         # Add calibration offset to servo command
         pos_servo_next += self.servo_calibration_offset
 
-        # Write goal position to each servo even if there is no trajectory
-        # for that particular joint, as some DOFs are coupled (thus servos may
-        # have to move to maintain a non-moving joint angle)
-        for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
-            dev.write_param_single('goal_position', pos)
+        if self.simulated:
+            self.current_position_servo = pos_servo_next
+        else:
+            # Write goal position to each servo even if there is no trajectory
+            # for that particular joint, as some DOFs are coupled (thus servos may
+            # have to move to maintain a non-moving joint angle)
+            for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
+                dev.write_param_single('goal_position', pos)
 
     def set_trajgen_target(self, m):
         # Map names to servo IDs
@@ -143,11 +165,18 @@ class EUAController(object):
         target_position = self.tg.target_position
         target_velocity = self.tg.target_velocity
 
-        for i, dev in enumerate(self.chain.devices):
-            if dev.id in msg_dev_id:
-                j = msg_dev_id.index(dev.id)
-                target_position[i] = m.position[j]
-                target_velocity[i] = m.velocity[j] if m.velocity else 0
+        if self.simulated:
+            for i, dev_id in enumerate(self.device_ids):
+                if dev_id in msg_dev_id:
+                    j = msg_dev_id.index(dev_id)
+                    target_position[i] = m.position[j]
+                    target_velocity[i] = m.velocity[j] if m.velocity else 0
+        else:
+            for i, dev in enumerate(self.chain.devices):
+                if dev.id in msg_dev_id:
+                    j = msg_dev_id.index(dev.id)
+                    target_position[i] = m.position[j]
+                    target_velocity[i] = m.velocity[j] if m.velocity else 0
 
         # rospy.loginfo("New target:\n\t{} (servo)\n\t{} (joint)".format(
         #     np.linalg.solve(self.K, target_position),
@@ -223,6 +252,7 @@ class EUAController(object):
         except (KeyboardInterrupt, rospy.ROSInterruptException):
             pass
         finally:
-            # disable servo torque
-            for dev in self.chain.devices:
-                dev.write_param_single('torque_enable', False)
+            if not self.simulated:
+                # disable servo torque
+                for dev in self.chain.devices:
+                    dev.write_param_single('torque_enable', False)
