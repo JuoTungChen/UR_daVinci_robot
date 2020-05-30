@@ -26,7 +26,8 @@
       <param name="prefix" value="a_ur_" />
     </node>
 
-    <node ns="tool" name="eua1_controller_sim" pkg="eua_control" type="eua1_controller_sim" output="screen">
+    <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <param name="simulated" value="true" />
       <param name="prefix" value="a_tool_" />
       <rosparam>
         joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
@@ -40,7 +41,7 @@
     </node>
 
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
-      <param name="publish_rate" value="125" />
+      <param name="publish_rate" value="500" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
@@ -56,7 +57,8 @@
       <param name="prefix" value="b_ur_" />
     </node>
 
-    <node ns="tool" name="eua1_controller_sim" pkg="eua_control" type="eua1_controller_sim" output="screen">
+    <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <param name="simulated" value="true" />
       <param name="prefix" value="b_tool_" />
       <rosparam>
         joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
@@ -76,6 +78,8 @@
       <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
+      <remap from="grasper_state_desired" to="set_grasper_state_desired" />
+
     </node>
   </group>
 

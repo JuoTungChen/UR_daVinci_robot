@@ -1,8 +1,11 @@
 ﻿#include <ursurg_common/conversions/eigen.h>
+#include <ursurg_common/math.h>
 #include <ursurg_common/rosutility.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/JointState.h>
 #include <std_msgs/Bool.h>
+#include <touch_msgs/ButtonEvent.h>
 
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
@@ -27,6 +30,8 @@ int main(int argc, char* argv[])
     Eigen::Isometry3d t_robotbase_robottcp_desired = Eigen::Isometry3d::Identity();
     Eigen::Isometry3d t_robotbase_haptictcp_current = Eigen::Isometry3d::Identity();
     Eigen::Isometry3d t_robotbase_haptictcp_last = Eigen::Isometry3d::Identity();
+    std::array<bool, 2> buttons{};
+    double grasp_desired = math::radians(60); // TODO initialize from ursurg_control
 
     auto t_robotbase_hapticbase = [&]() {
         tf2_ros::Buffer tf_buffer;
@@ -48,6 +53,7 @@ int main(int argc, char* argv[])
     }();
 
     auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
+    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasper_state_desired", 1);
 
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
@@ -83,19 +89,43 @@ int main(int argc, char* argv[])
                 }
             },
             ros::TransportHints().tcpNoDelay()),
+        mksub<touch_msgs::ButtonEvent>(
+            nh, "haptic_buttons", 1, [&](const auto& m) {
+                if (m.button == touch_msgs::ButtonEvent::BUTTON_GRAY)
+                    buttons[0] = (m.event == touch_msgs::ButtonEvent::EVENT_PRESSED);
+                else if (m.button == touch_msgs::ButtonEvent::BUTTON_WHITE)
+                    buttons[1] = (m.event == touch_msgs::ButtonEvent::EVENT_PRESSED);
+            },
+            ros::TransportHints().tcpNoDelay()),
     };
 
     auto timer = nh.createSteadyTimer(
         ros::WallDuration(1.0 / nh_priv.param("publish_rate", 500)),
-        [&](const auto&) {
-            if (clutch_engaged) {
-                geometry_msgs::PoseStamped m;
-                m.header.stamp = ros::Time::now();
-                m.header.frame_id = pose_tcp_frame_id;
-                m.pose = convert_to<geometry_msgs::Pose>(t_robotbase_robottcp_desired);
-                pub_pose_desired.publish(m);
+        [&](const ros::SteadyTimerEvent& e) {
+            if (!clutch_engaged)
+                return;
 
-                // TODO buttons -> grasper angle
+            double grasp_rate = math::pi / 4; // TODO: enable setting grasp rate via service call
+            auto dt = e.current_real - e.last_real;
+
+            geometry_msgs::PoseStamped m;
+            m.header.stamp = ros::Time::now();
+            m.header.frame_id = pose_tcp_frame_id;
+            m.pose = convert_to<geometry_msgs::Pose>(t_robotbase_robottcp_desired);
+            pub_pose_desired.publish(m);
+
+            if (buttons[0] && !buttons[1]) {
+                grasp_desired -= grasp_rate * dt.toSec();
+
+                sensor_msgs::JointState m_grasp;
+                m_grasp.position.push_back(grasp_desired);
+                pub_grasp_desired.publish(m_grasp);
+            } else if (buttons[1] && !buttons[0]) {
+                grasp_desired += grasp_rate * dt.toSec();
+
+                sensor_msgs::JointState m_grasp;
+                m_grasp.position.push_back(grasp_desired);
+                pub_grasp_desired.publish(m_grasp);
             }
         });
 

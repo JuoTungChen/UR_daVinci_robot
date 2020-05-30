@@ -212,6 +212,11 @@ int main(int argc, char* argv[])
                 }
             },
             ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "grasper_state_desired", 1, [&](const auto& m) {
+                grasp_desired = m.position.front();
+            },
+            ros::TransportHints().tcpNoDelay()),
     };
 
     // Schedule timer to publish TCP pose

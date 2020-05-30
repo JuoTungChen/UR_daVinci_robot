@@ -24,7 +24,8 @@
       <param name="prefix" value="a_ur_" />
     </node>
 
-    <node ns="tool" name="eua1_controller_sim" pkg="eua_control" type="eua1_controller_sim" output="screen">
+    <node name="eua_control" pkg="eua_control" type="controller" output="screen">
+      <param name="simulated" value="true" />
       <param name="prefix" value="a_tool_" />
       <rosparam>
         joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
@@ -42,8 +43,10 @@
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/hid/touch/left/button_event" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
+      <!-- <remap from="grasper_state_desired" to="set_grasper_state_desired" /> -->
     </node>
   </group>
 
