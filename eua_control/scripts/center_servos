@@ -21,7 +21,6 @@ if __name__ == '__main__':
     parser.add_argument('baudrate', type=int)
     parser.add_argument('-d','--device-ids', nargs='+', type=int, required=True, help='Device IDs')
     args = parser.parse_args()
-
     chain = dynamixel.Chain(args.port, args.baudrate, args.device_ids)
 
     if not chain.devices:
