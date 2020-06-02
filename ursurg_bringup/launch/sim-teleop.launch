@@ -47,6 +47,7 @@
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
+      <remap from="grasper_angle_desired" to="servo_grasper_angle" />
     </node>
   </group>
 
@@ -78,7 +79,7 @@
       <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
       <remap from="clutch_engaged" to="/hid/clutch_engaged" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
-      <remap from="grasper_state_desired" to="set_grasper_state_desired" />
+      <remap from="grasper_angle_desired" to="servo_grasper_angle" />
 
     </node>
   </group>

@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     }();
 
     auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
-    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasper_state_desired", 1);
+    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasper_angle_desired", 1);
 
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
