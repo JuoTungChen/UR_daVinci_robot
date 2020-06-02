@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 
-class EUATransmission(object):
+class EUA1Transmission(object):
     def __init__(self):
         t0 = 1.5     # motor-to-disc transmission (for all motors)
         t1 = 1.5632  # roll disc-to-joint transmission
@@ -51,7 +51,7 @@ class EUAController(object):
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
-        self.transmission = EUATransmission()
+        self.transmission = EUA1Transmission()
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -66,15 +66,12 @@ class EUAController(object):
 
         if self.simulated:
             # Current state of the simulated servos
-            # self.sim_servo_limits = zip([np.radians(-150)] * 4, [np.radians(150)] * 4)
-            # self.sim_servo_limits = zip([0] * 4, [np.radians(300)] * 4)
-            self.sim_current_position_servo = np.zeros(4) #np.full(4, np.radians(150)) #
+            self.sim_current_position_servo = np.zeros(4)
             self.sim_current_velocity_servo = np.zeros(4)
             self.sim_current_effort_servo = np.zeros(4)
 
             # Calibration offset (default to zero at servo center position)
             self.set_servo_calibration_offset(np.zeros(4))
-            # self.set_servo_calibration_offset(np.full(4, np.radians(150)))
 
             rospy.loginfo("Starting in simulated mode")
         else:
@@ -92,11 +89,6 @@ class EUAController(object):
             if len(self.joint_names) != len(self.chain.devices) != 4:
                 raise RuntimeError("Not all devices found")
 
-            # # Calibration offset (default to zero at servo center position)
-            # servo_limits_lower = np.array([dev.read_param_single('cw_angle_limit') for dev in self.chain.devices])
-            # servo_limits_upper = np.array([dev.read_param_single('ccw_angle_limit') for dev in self.chain.devices])
-            # servo_center = servo_limits_lower + (servo_limits_upper - servo_limits_lower) / 2
-            # self.set_servo_calibration_offset(np.array(rospy.get_param('/eua/servo_calibration_offset', servo_center.tolist())))  # rosparam doesn't like ndarrays
             self.set_servo_calibration_offset(np.array(rospy.get_param('~servo_calibration_offset', [0]*4)))  # rosparam doesn't like ndarrays
 
         self.pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
@@ -327,6 +319,8 @@ class EUACalibrator(object):
 
             self._run()
         except:
+            rospy.logerr("Calibration error!")
+
             # Ramp down current trajectory and wait until movement has stopped
             self.c.stop_trajectory()
 
@@ -359,20 +353,16 @@ class EUACalibrator(object):
 
         # Zero current calibration offset
         self.c.set_servo_calibration_offset(np.zeros(4))
+        rospy.sleep(0.5)
 
         # The target position is the servo limits
-        # if self.c.simulated:
-        #     servo_limits = self.c.sim_servo_limits
-        # else:
-        servo_limits = [(dev.read_param_single('cw_angle_limit'), dev.read_param_single('ccw_angle_limit')) for dev in self.c.chain.devices]
-
-        lower_servo_limits_in_joint_space = self.c.transmission.servo_to_joint([lim[0] for lim in servo_limits])
-        upper_servo_limits_in_joint_space = self.c.transmission.servo_to_joint([lim[1] for lim in servo_limits])
+        servo_limits_lower = [dev.read_param_single('cw_angle_limit') for dev in self.c.chain.devices]
+        servo_limits_upper = [dev.read_param_single('ccw_angle_limit') for dev in self.c.chain.devices]
         move_to_upper = [True, True, False, True]
-        target_position = [upper if d else lower for d, lower, upper in zip(move_to_upper, lower_servo_limits_in_joint_space, upper_servo_limits_in_joint_space)]
+        target_position_servo = [upper - 0.01 if d else lower + 0.01 for d, lower, upper in zip(move_to_upper, servo_limits_lower, servo_limits_upper)]
+        target_position = self.c.transmission.servo_to_joint(target_position_servo).tolist()
 
         # Start trajectory toward servo limits
-        print(target_position)
         self.c.init_trajectory(JointState(name=self.c.joint_names, position=target_position))
 
         detected_joint_limits_in_servo_space = [None] * 4
@@ -406,12 +396,21 @@ class EUACalibrator(object):
                     target_position[i] = joint_state.position[i]
                     self.c.init_trajectory(JointState(name=self.c.joint_names, position=target_position))
 
+        # Wait for movement to end
+        while self.c.trajectory is not None:
+            rospy.sleep(0.1)
+
         # All joints are now at the hard mechanical limits (known reference
         # points), compute calibration offset
         known_joint_limits = np.radians([275, 95, 115, 115])  # FIXME: hard coded values
         known_joint_limits_in_servo_space = self.c.transmission.joint_to_servo(known_joint_limits)
-        self.set_servo_calibration_offset(np.array(detected_joint_limits_in_servo_space) - known_joint_limits_in_servo_space)
+        self.c.set_servo_calibration_offset(np.array(detected_joint_limits_in_servo_space) - known_joint_limits_in_servo_space)
 
-        # Move joints to home position
+        # # Move joints to home position
         home_position = np.radians([0, 0, 45, 45])  # FIXME: hard coded values
-        self.c.init_trajectory(JointState(name=self.c.joint_names, position=home_position))
+        self.c.init_trajectory(JointState(name=self.c.joint_names, position=home_position.tolist()))
+
+        while self.c.trajectory is not None:
+            rospy.sleep(0.1)
+
+        rospy.loginfo("Calibration done!")
