@@ -153,13 +153,11 @@ int main(int argc, char* argv[])
     };
 
     auto make_msgs = [&](const KDL::JntArray& q, double grasp) {
-        auto dptr = q.data.data();
-
         // The first 6 elements of the solution vector is the robot configuration
         sensor_msgs::JointState m_robot;
         m_robot.header.stamp = ros::Time::now();
         // FIXME joint names
-        std::copy(dptr, std::next(dptr, 6), std::back_inserter(m_robot.position));
+        std::copy(q.data.data(), std::next(q.data.data(), 6), std::back_inserter(m_robot.position));
 
         // and the last 4 is the tool configuration
         sensor_msgs::JointState m_tool;
@@ -186,7 +184,7 @@ int main(int argc, char* argv[])
                     *q_current_by_name.at(m.name[i]) = m.position[i];
 
                 // Tip TCP joint state is between the two grasper jaws
-                *q_current_by_name.at(chain_tip) = (q_yaw[1] - q_yaw[0]) / 2;
+                *q_current_by_name.at(chain_tip) = (q_yaw[0] - q_yaw[1]) / 2;
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
