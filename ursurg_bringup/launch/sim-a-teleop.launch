@@ -24,7 +24,7 @@
       <param name="prefix" value="a_ur_" />
     </node>
 
-    <node name="eua_control" pkg="eua_control" type="controller" output="screen">
+    <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
       <param name="simulated" value="true" />
       <param name="prefix" value="a_tool_" />
       <rosparam>
