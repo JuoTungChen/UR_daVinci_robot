@@ -15,6 +15,29 @@ except ImportError:
     pass
 
 
+class EUATransmission(object):
+    def __init__(self):
+        t0 = 1.5     # motor-to-disc transmission (for all motors)
+        t1 = 1.5632  # roll disc-to-joint transmission
+        t2 = 1.0186  # wrist disc-to-joint transmission
+        t3 = 1.2177  # grasper jaw disc-to-joint transmission (the same for both jaws)
+        w = 0.6089   # coupling between wrist and grasper jaws (the same for both jaws)
+
+        # Transmission/coupling matrix K
+        self.K = t0 * np.array([
+            [  t1,  0,     0,   0   ],
+            [  0,   t2,    0,   0   ],
+            [  0,   t2*w, -t3,  0   ],
+            [  0,  -t2*w,  0,   t3  ],
+        ])
+
+    def servo_to_joint(self, servo_angles):
+        return self.K.dot(servo_angles)
+
+    def joint_to_servo(self, joint_angles):
+        return np.linalg.solve(self.K, joint_angles)
+
+
 class EUAController(object):
     def __init__(self):
         self.loop_rate_hz = 100.0
@@ -28,24 +51,7 @@ class EUAController(object):
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
-        # Transmission/coupling matrix K
-        t0 = 1.5     # motor-to-disc transmission (for all motors)
-        t1 = 1.5632  # roll disc-to-joint transmission
-        t2 = 1.0186  # wrist disc-to-joint transmission
-        t3 = 1.2177  # grasper jaw disc-to-joint transmission (the same for both jaws)
-        w = 0.6089   # coupling between wrist and grasper jaws (the same for both jaws)
-        # self.K = t0 * np.array([
-        #     [  t1,  0,     0,   0   ],
-        #     [  0,   t2,    0,   0   ],
-        #     [  0,   t2*w, -t3,  0   ],
-        #     [  0,  -t2*w,  0,   t3  ],
-        # ])
-        self.K = t0 * np.array([
-            [  t1,  0,     0,   0   ],
-            [  0,   t2,    0,   0   ],
-            [  0,  -t2*w,  t3,  0   ],
-            [  0,   t2*w,  0,  -t3  ],
-        ])
+        self.transmission = EUATransmission()
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -158,14 +164,14 @@ class EUAController(object):
         s = JointState()
         s.header.stamp = servo_state.header.stamp
         s.name = self.joint_names
-        s.position = self.K.dot(servo_state.position)
-        s.velocity = self.K.dot(servo_state.velocity)
-        s.effort = self.K.dot(servo_state.effort)
+        s.position = self.transmission.servo_to_joint(servo_state.position)
+        s.velocity = self.transmission.servo_to_joint(servo_state.velocity)
+        s.effort = self.transmission.servo_to_joint(servo_state.effort)
         return s
 
     def write_joint_goal(self, pos_joint_next):
         # Compute corresponding servo angles through coupling/gearing
-        pos_servo_next = np.linalg.solve(self.K, pos_joint_next)
+        pos_servo_next = self.transmission.joint_to_servo(pos_joint_next)
 
         # Add calibration offset to servo command
         pos_servo_next += self.servo_calibration_offset
@@ -202,7 +208,7 @@ class EUAController(object):
                     target_velocity[i] = m.velocity[j] if m.velocity else 0
 
         # rospy.loginfo("New target:\n\t{} (servo)\n\t{} (joint)".format(
-        #     np.linalg.solve(self.K, target_position),
+        #     self.transmission.joint_to_servo(target_position),
         #     np.array(target_position)))
 
     def set_joint_goal_direct(self, m):
@@ -360,8 +366,8 @@ class EUACalibrator(object):
         # else:
         servo_limits = [(dev.read_param_single('cw_angle_limit'), dev.read_param_single('ccw_angle_limit')) for dev in self.c.chain.devices]
 
-        lower_servo_limits_in_joint_space = self.c.K.dot([lim[0] for lim in servo_limits])
-        upper_servo_limits_in_joint_space = self.c.K.dot([lim[1] for lim in servo_limits])
+        lower_servo_limits_in_joint_space = self.c.transmission.servo_to_joint([lim[0] for lim in servo_limits])
+        upper_servo_limits_in_joint_space = self.c.transmission.servo_to_joint([lim[1] for lim in servo_limits])
         move_to_upper = [True, True, False, True]
         target_position = [upper if d else lower for d, lower, upper in zip(move_to_upper, lower_servo_limits_in_joint_space, upper_servo_limits_in_joint_space)]
 
@@ -403,7 +409,7 @@ class EUACalibrator(object):
         # All joints are now at the hard mechanical limits (known reference
         # points), compute calibration offset
         known_joint_limits = np.radians([275, 95, 115, 115])  # FIXME: hard coded values
-        known_joint_limits_in_servo_space = np.linalg.solve(self.K, known_joint_limits)
+        known_joint_limits_in_servo_space = self.c.transmission.joint_to_servo(known_joint_limits)
         self.set_servo_calibration_offset(np.array(detected_joint_limits_in_servo_space) - known_joint_limits_in_servo_space)
 
         # Move joints to home position
