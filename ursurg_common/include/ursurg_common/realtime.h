@@ -39,6 +39,7 @@ inline void lock_and_prefault_mem(std::size_t size)
     std::free(buffer);
 }
 
+#ifdef _POSIX_THREAD_PRIORITY_SCHEDULING
 inline void thread_set_sched_fifo_with_priority(pthread_t handle, int priority)
 {
     // Enable realtime scheduling policy
@@ -50,3 +51,4 @@ inline void thread_set_sched_fifo_with_priority(pthread_t handle, int priority)
     if (pthread_setschedparam(handle, SCHED_FIFO, &param) != 0)
         throw std::system_error(errno, std::generic_category(), "Failed setschedparam");
 }
+#endif
