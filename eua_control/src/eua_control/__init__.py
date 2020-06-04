@@ -89,7 +89,11 @@ class EUAController(object):
             if len(self.joint_names) != len(self.chain.devices) != 4:
                 raise RuntimeError("Not all devices found")
 
-            self.set_servo_calibration_offset(np.array(rospy.get_param('~servo_calibration_offset', [0]*4)))  # rosparam doesn't like ndarrays
+            if self.device_ids != tuple(dev.id for dev in self.chain.devices):
+                raise RuntimeError("Device IDs mismatch")
+
+            self.set_servo_calibration_offset(np.array(rospy.get_param('~servo_calibration_offset', [0, 0, 0, 0])))
+
 
         self.pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
         self.pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1) if rospy.get_param('~publish_servo_states', False) else None
@@ -186,22 +190,16 @@ class EUAController(object):
         target_position = self.tg.target_position
         target_velocity = self.tg.target_velocity
 
-        if self.simulated:
-            for i, dev_id in enumerate(self.device_ids):
-                if dev_id in msg_dev_id:
-                    j = msg_dev_id.index(dev_id)
-                    target_position[i] = m.position[j]
-                    target_velocity[i] = m.velocity[j] if m.velocity else 0
-        else:
-            for i, dev in enumerate(self.chain.devices):
-                if dev.id in msg_dev_id:
-                    j = msg_dev_id.index(dev.id)
-                    target_position[i] = m.position[j]
-                    target_velocity[i] = m.velocity[j] if m.velocity else 0
+        for i, dev_id in enumerate(self.device_ids):
+            if dev_id in msg_dev_id:
+                j = msg_dev_id.index(dev_id)
+                target_position[i] = m.position[j]
+                target_velocity[i] = m.velocity[j] if m.velocity else 0
 
-        # rospy.loginfo("New target:\n\t{} (servo)\n\t{} (joint)".format(
-        #     self.transmission.joint_to_servo(target_position),
-        #     np.array(target_position)))
+        # rospy.loginfo("New target:\n\tjoints: {}\n\tpos:{} (servo)\n\tpos:{} (joint)".format(
+        #     m.name,
+        #     self.transmission.joint_to_servo(self.tg.target_position),
+        #     np.array(self.tg.target_position)))
 
     def set_joint_goal_direct(self, m):
         """Set servo set-point directly without trajectory generation
@@ -220,7 +218,7 @@ class EUAController(object):
 
         # Write the target directly to servos without generating the actual
         # trajectory
-        self.write_joint_goal(self.tg.target_position.tolist())
+        self.write_joint_goal(self.tg.target_position)
 
     def init_trajectory(self, m):
         """Set a joint-space trajectory setpoint for the given servos
@@ -239,10 +237,15 @@ class EUAController(object):
         except StopIteration:
             self.trajectory = None
 
-    def stop_trajectory(self):
+    def stop_trajectory_soft(self):
         self.tg.target_position[:] = self.tg.current_position
         self.tg.target_velocity.fill(0)
         self.trajectory = self.tg.trajectory()
+
+    def stop_trajectory_hard(self):
+        self.tg.target_position[:] = self.tg.current_position
+        self.tg.target_velocity.fill(0)
+        self.trajectory = None
 
     def publish(self, servo_state, joint_state):
         if self.pub_servo is not None:
@@ -283,6 +286,10 @@ class EUAController(object):
         return TriggerResponse(success=True)
 
 
+class EUACalibrationError(Exception):
+    pass
+
+
 class EUACalibrator(object):
     def __init__(self, controller):
         self.c = controller
@@ -295,122 +302,162 @@ class EUACalibrator(object):
             self.servo_state = servo_state
             self.joint_state = joint_state
 
+    def wait_for_first_state_callback(self):
+        def test_callback_received():
+            with self.lock:
+                return self.servo_state is None
+
+        while test_callback_received():
+            rospy.sleep(0.1)
+
+    def wait_for_controller_trajectory_end(self):
+        while self.c.trajectory is not None:
+            rospy.sleep(0.1)
+
     def run(self):
         try:
             # Subscribe to controller state changes
             self.c.state_update_callbacks.append(self.controller_state_changed)
 
             # Wait for first state update to arrive
-            def test_callback_received():
-                with self.lock:
-                    return self.servo_state is None
-
-            while test_callback_received():
-                rospy.sleep(0.1)
+            self.wait_for_first_state_callback()
 
             # Save current controller state
-            tg_max_velocity = self.c.tg.max_velocity.copy()
-            tg_max_acceleration = self.c.tg.max_acceleration.copy()
-            tg_max_jerk = self.c.tg.max_jerk.copy()
-            calibration_offset = self.c.servo_calibration_offset.copy()
+            self.tg_max_velocity = self.c.tg.max_velocity.copy()
+            self.tg_max_acceleration = self.c.tg.max_acceleration.copy()
+            self.tg_max_jerk = self.c.tg.max_jerk.copy()
+            self.calibration_offset = self.c.servo_calibration_offset.copy()
 
             with self.lock:
-                position_joint = self.joint_state.position.tolist()
+                self.initial_joint_state = self.joint_state
 
             self._run()
-        except:
-            rospy.logerr("Calibration error!")
+        except EUACalibrationError as e:
+            rospy.logerr("Calibration error: {}".format(e))
 
             # Ramp down current trajectory and wait until movement has stopped
-            self.c.stop_trajectory()
-
-            while self.c.trajectory is not None:
-                rospy.sleep(0.1)
+            self.c.stop_trajectory_soft()
+            self.wait_for_controller_trajectory_end()
 
             # Restore previous calibration offset
-            self.c.set_servo_calibration_offset(calibration_offset)
+            self.c.set_servo_calibration_offset(self.calibration_offset)
 
             # Move back to initial position
-            self.c.init_trajectory(JointState(name=self.c.joint_names, position=position_joint))
-
-            while self.c.trajectory is not None:
-                rospy.sleep(0.1)
-
-            raise
+            self.c.init_trajectory(JointState(name=self.c.joint_names, position=self.initial_joint_state.position.tolist()))
+            self.wait_for_controller_trajectory_end()
         finally:
             if self.controller_state_changed in self.c.state_update_callbacks:
                 self.c.state_update_callbacks.remove(self.controller_state_changed)
 
-            # Reset trajectory generator limits
-            self.c.tg.max_velocity = tg_max_velocity
-            self.c.tg.max_acceleration = tg_max_acceleration
-            self.c.tg.max_jerk = tg_max_jerk
+            self.set_tg_limits_orig()
 
-    def _run(self):
+    def set_tg_limits_safe(self):
+        # Set safe (low) trajectory generator limits
         self.c.tg.max_velocity = [np.pi / 4] * 4
         self.c.tg.max_acceleration = [2 * np.pi] * 4
         self.c.tg.max_jerk = [20 * np.pi] * 4
 
+    def set_tg_limits_orig(self):
+        # Reset original trajectory generator limits
+        self.c.tg.max_velocity = self.tg_max_velocity
+        self.c.tg.max_acceleration = self.tg_max_acceleration
+        self.c.tg.max_jerk = self.tg_max_jerk
+
+    def _run(self):
+        self.set_tg_limits_safe()
+
         # Zero current calibration offset
-        self.c.set_servo_calibration_offset(np.zeros(4))
+        for dev in self.c.chain.devices:
+            dev.write_param_single('torque_enable', False)
         rospy.sleep(0.5)
+        self.c.set_servo_calibration_offset(np.zeros(4))
 
         # The target position is the servo limits
         servo_limits_lower = [dev.read_param_single('cw_angle_limit') for dev in self.c.chain.devices]
         servo_limits_upper = [dev.read_param_single('ccw_angle_limit') for dev in self.c.chain.devices]
-        move_to_upper = [True, True, False, True]
-        target_position_servo = [upper - 0.01 if d else lower + 0.01 for d, lower, upper in zip(move_to_upper, servo_limits_lower, servo_limits_upper)]
-        target_position = self.c.transmission.servo_to_joint(target_position_servo).tolist()
 
-        # Start trajectory toward servo limits
-        self.c.init_trajectory(JointState(name=self.c.joint_names, position=target_position))
+        detected_positions_in_servo_space = [None for i in range(4)]
+        reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 110, 110]))
 
-        detected_joint_limits_in_servo_space = [None] * 4
+        thresholds = [0.15, 0.14, 0.15, 0.15]  # FIXME: hard coded values
 
-        # Detect whether the joint limit is reached for each of the joints
-        while any(x is None for x in detected_joint_limits_in_servo_space):
-            if self.c.trajectory is None:
-                raise RuntimeError("Trajectory reached the end (servo limit) without detecting all joint limits")
+        ROLL, PITCH, YAW1, YAW2 = range(4)
+        LOWER, UPPER = range(2)
 
-            thresholds = [0.18, 0.14, 0.15, 0.15]  # FIXME: hard coded values
+        def detect_limit_blocking(j, d):
+            while True:
+                if self.c.trajectory is None:
+                    raise EUACalibrationError("Trajectory reached the end (servo limit) without detecting the joint limit")
 
-            with self.lock:
-                servo_state = self.servo_state
-                joint_state = self.joint_state
+                with self.lock:
+                    servo_state = self.servo_state
+                    joint_state = self.joint_state
 
-            for i in range(4):
-                if ((detected_joint_limits_in_servo_space[i] is None)
-                        and ((move_to_upper[i] and servo_state.effort[i] < -thresholds[i])
-                            or (not move_to_upper[i] and servo_state.effort[i] > thresholds[i]))):
+                if ((d == 0 and servo_state.effort[j] > thresholds[j])
+                        or (d == 1 and servo_state.effort[j] < -thresholds[j])):
                     rospy.loginfo("Found '{}' {} joint limit at {:.1f} deg (servo) / {:.1f} deg (joint) - servo load: {:.3f}".format(
-                        self.c.joint_names[i],
-                        'upper' if move_to_upper[i] else 'lower',
-                        round(np.degrees(servo_state.position[i]), 1),
-                        round(np.degrees(joint_state.position[i]), 1),
-                        round(servo_state.effort[i], 3)))
+                        self.c.joint_names[j],
+                        'upper' if d == 1 else 'lower',
+                        round(np.degrees(servo_state.position[j]), 1),
+                        round(np.degrees(joint_state.position[j]), 1),
+                        round(servo_state.effort[j], 3)))
 
-                    # Save the position at the detected joint limit
-                    detected_joint_limits_in_servo_space[i] = servo_state.position[i]
+                    return servo_state.position[j], joint_state.position[j]
 
-                    # Stop the trajectory (target <- current) for this joint
-                    target_position[i] = joint_state.position[i]
-                    self.c.init_trajectory(JointState(name=self.c.joint_names, position=target_position))
+        def servo_to_joint_for_joint(j, j_pos_servo):
+            with self.lock:
+                target_position = self.servo_state.position.copy()
 
-        # Wait for movement to end
-        while self.c.trajectory is not None:
-            rospy.sleep(0.1)
+            target_position[j] = j_pos_servo
+            return self.c.transmission.servo_to_joint(target_position)
 
-        # All joints are now at the hard mechanical limits (known reference
-        # points), compute calibration offset
-        known_joint_limits = np.radians([275, 95, 115, 115])  # FIXME: hard coded values
-        known_joint_limits_in_servo_space = self.c.transmission.joint_to_servo(known_joint_limits)
-        self.c.set_servo_calibration_offset(np.array(detected_joint_limits_in_servo_space) - known_joint_limits_in_servo_space)
+        # Find grasper joint limits
+        for j in (YAW1, YAW2):
+            rospy.loginfo("Calibrating joint '{}'".format(self.c.joint_names[j]))
 
-        # # Move joints to home position
-        home_position = np.radians([0, 0, 45, 45])  # FIXME: hard coded values
+            # Move toward servo limit in the "grasper open"-direction (opposite
+            # directions for each grasper jaw)
+            d = LOWER if j == YAW1 else UPPER
+            target_position = servo_to_joint_for_joint(j, servo_limits_lower[j] + 0.01 if d == LOWER else servo_limits_upper[j] - 0.01)
+            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
+
+            # Wait until we hit the joint limit
+            detected_positions_in_servo_space[j] = detect_limit_blocking(j, d)[0]
+            self.c.stop_trajectory_hard()
+
+            # Move back to the initial position
+            self.set_tg_limits_orig()
+            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
+            self.wait_for_controller_trajectory_end()
+            self.set_tg_limits_safe()
+
+        # Find rotation and wrist lower+upper limits (the mid-points between these
+        # values are then the zero position)
+        for j in (ROLL, PITCH):
+            rospy.loginfo("Calibrating joint '{}'".format(self.c.joint_names[j]))
+            limits = [None, None]
+
+            for d in (LOWER, UPPER):
+                # Move toward servo lower- and upper limits
+                target_position = servo_to_joint_for_joint(j, servo_limits_lower[j] + 0.01 if d == LOWER else servo_limits_upper[j] - 0.01)
+                self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
+
+                # Wait until we hit the joint limit
+                limits[d] = detect_limit_blocking(j, d)[0]
+                self.c.stop_trajectory_hard()
+
+            # Move back to the initial position
+            self.set_tg_limits_orig()
+            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
+            self.wait_for_controller_trajectory_end()
+            self.set_tg_limits_safe()
+
+            # Save the detected center position
+            detected_positions_in_servo_space[j] = limits[0] + (limits[1] - limits[0]) / 2
+
+        self.c.set_servo_calibration_offset(np.array(detected_positions_in_servo_space) - reference_positions_in_servo_space)
+
+        # Move joints to home position
+        self.set_tg_limits_orig()
+        home_position = np.radians([0, 0, 30, 30])  # FIXME: hard coded values
         self.c.init_trajectory(JointState(name=self.c.joint_names, position=home_position.tolist()))
-
-        while self.c.trajectory is not None:
-            rospy.sleep(0.1)
-
-        rospy.loginfo("Calibration done!")
