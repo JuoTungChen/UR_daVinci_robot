@@ -18,14 +18,14 @@
     <origin xyz="0.6 -0.2 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- A) LND 420006 tool -->
-  <xacro:lnd420006 prefix="a_tool_" />
+  <!-- A) LND 470006 tool -->
+  <xacro:lnd470006 prefix="a_tool_" />
 
   <joint name="a_ur_tool_joint" type="fixed">
     <parent link="a_ur_ee_link" />
     <child link="a_tool_mount" />
     <!-- TODO: Calibrate to find this transform accurately -->
-    <origin xyz="0.075 0 -0.04" rpy="${pi} 0 0" />
+    <origin xyz="0.09 0 0" rpy="${pi} 0 0" />
   </joint>
 
   <!-- B) UR5 robot -->
@@ -39,14 +39,14 @@
     <origin xyz="0.6 -1 0" rpy="0 0 ${pi/2}" />
   </joint>
 
-  <!-- B) LND 470006 tool -->
-  <xacro:lnd470006 prefix="b_tool_" />
+  <!-- B) LND 420006 tool -->
+  <xacro:lnd420006 prefix="b_tool_" />
 
   <joint name="b_eua2_tool_joint" type="fixed">
     <parent link="b_ur_ee_link" />
     <child link="b_tool_mount" />
     <!-- TODO: Calibrate to find this transform accurately -->
-    <origin xyz="0.09 0 0" rpy="${pi} 0 0" />
+    <origin xyz="0.075 0 -0.04" rpy="${pi} 0 0" />
   </joint>
 
   <!-- Table -->
