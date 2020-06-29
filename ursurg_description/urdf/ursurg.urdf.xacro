@@ -15,7 +15,7 @@
   <joint name="a_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="a_ur_base_link" />
-    <origin xyz="0.6 -0.2 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="0 0.4 0" rpy="0 0 ${pi/2}" />
   </joint>
 
   <!-- A) LND 470006 tool -->
@@ -36,7 +36,7 @@
   <joint name="b_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="b_ur_base_link" />
-    <origin xyz="0.6 -1 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="0 -0.4 0" rpy="0 0 ${pi/2}" />
   </joint>
 
   <!-- B) LND 420006 tool -->
@@ -46,25 +46,7 @@
     <parent link="b_ur_ee_link" />
     <child link="b_tool_mount" />
     <!-- TODO: Calibrate to find this transform accurately -->
-    <origin xyz="0.075 0 -0.04" rpy="${pi} 0 0" />
-  </joint>
-
-  <!-- Table -->
-  <link name="table_base">
-    <visual>
-      <origin xyz="0.4 -0.6 -0.4" rpy="0 0 ${pi/2}" />
-      <geometry>
-        <box size="1.2 0.8 0.8" />
-      </geometry>
-      <material name="table_color">
-        <color rgba="0.55 0.45 0.3 1.0" />
-      </material>
-    </visual>
-  </link>
-
-  <joint name="world_table_base_joint" type="fixed">
-    <parent link="world" />
-    <child link="table_base" />
+    <origin xyz="0.075 0 0.04" rpy="0 0 0" />
   </joint>
 
   <!-- Touch haptic devices -->
@@ -81,6 +63,44 @@
     <parent link="world" />
     <child link="touch_right_base" />
     <origin xyz="-0.6 -0.7 0" rpy="0 0 ${pi/2}" />
+  </joint>
+
+  <!-- Robot platform -->
+  <link name="platform">
+    <visual>
+      <origin xyz="0 0 -0.4" rpy="0 0 ${pi/2}" />
+      <geometry>
+        <box size="1.2 0.8 0.8" />
+      </geometry>
+      <material name="platform_color">
+        <color rgba="0.55 0.45 0.3 1.0" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_platform_joint" type="fixed">
+    <parent link="world" />
+    <child link="platform" />
+    <origin xyz="-0.2 0 0" rpy="0 0 0" />
+  </joint>
+
+  <!-- Operating table -->
+  <link name="operating_table">
+    <visual>
+      <origin xyz="0 0 -0.245" rpy="0 0 ${pi/2}" />
+      <geometry>
+        <box size="0.635 0.49 0.49" />
+      </geometry>
+      <material name="operating_table_color">
+        <color rgba="0.55 0.45 0.3 1.0" />
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_operating_table_joint" type="fixed">
+    <parent link="world" />
+    <child link="operating_table" />
+    <origin xyz="0.5 0 -0.31" rpy="0 0 0" />
   </joint>
 
 </robot>
