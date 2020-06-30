@@ -29,41 +29,30 @@ void FootControlWidget::keyPressEvent(QKeyEvent* event)
         setPedalEngaged(Pedal::Left, true);
         break;
 
+    case Qt::Key_X:
+        setPedalEngaged(Pedal::Left, false);
+        break;
+
     case Qt::Key_B:
         setPedalEngaged(Pedal::Middle, true);
+        break;
+
+    case Qt::Key_Y:
+        setPedalEngaged(Pedal::Middle, false);
         break;
 
     case Qt::Key_C:
         setPedalEngaged(Pedal::Right, true);
         break;
 
-    default:
-        break;
-    }
-
-    QWidget::keyPressEvent(event);
-}
-
-void FootControlWidget::keyReleaseEvent(QKeyEvent* event)
-{
-    switch (event->key()) {
-    case Qt::Key_A:
-        setPedalEngaged(Pedal::Left, false);
-        break;
-
-    case Qt::Key_B:
-        setPedalEngaged(Pedal::Middle, false);
-        break;
-
-    case Qt::Key_C:
+    case Qt::Key_Z:
         setPedalEngaged(Pedal::Right, false);
         break;
 
     default:
+        QWidget::keyPressEvent(event);
         break;
     }
-
-    QWidget::keyReleaseEvent(event);
 }
 
 void FootControlWidget::focusOutEvent(QFocusEvent* event)
