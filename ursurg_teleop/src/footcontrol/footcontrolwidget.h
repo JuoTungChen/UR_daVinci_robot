@@ -4,6 +4,14 @@
 
 class QKeyEvent;
 class QFocusEvent;
+class QLabel;
+
+enum Pedal : std::size_t
+{
+    Left = 0,
+    Middle,
+    Right,
+};
 
 class FootControlWidget : public QWidget
 {
@@ -14,16 +22,16 @@ public:
 
 private:
     virtual void keyPressEvent(QKeyEvent* event) override;
+    virtual void keyReleaseEvent(QKeyEvent* event) override;
     virtual void focusOutEvent(QFocusEvent* event) override;
-    void setBackgroundColor(Qt::GlobalColor color);
 
 signals:
-    void clutchEngagedChanged(bool engaged);
+    void pedalEngagedChanged(Pedal i, bool engaged);
 
 private:
-    void setClutchEngaged();
-    void setClutchDisengaged();
+    void setPedalEngaged(Pedal i, bool engaged);
 
-private:
-    bool clutch_engaged_;
+    std::array<bool, 3> engaged_;
+    std::array<QLabel*, 3> label_;
 };
+

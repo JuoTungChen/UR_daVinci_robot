@@ -9,7 +9,7 @@
       <param name="publish_rate" value="500" />
     </node>
 
-    <node name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
+    <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
   </group>
 
 </launch>

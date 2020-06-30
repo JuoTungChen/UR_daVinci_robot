@@ -25,12 +25,19 @@ int main(int argc, char* argv[])
     // SIGINT quits the Qt event loop
     std::signal(SIGINT, [](int) { QApplication::quit(); });
 
-    auto pub = nh.advertise<std_msgs::Bool>("clutch_engaged", 4, true);
-    pub.publish(boolMsg(false)); // Publish initial value (latched topic)
+    std::array<ros::Publisher, 3> publishers = {
+        nh.advertise<std_msgs::Bool>("left", 4, true),
+        nh.advertise<std_msgs::Bool>("middle", 4, true),
+        nh.advertise<std_msgs::Bool>("right", 4, true),
+    };
+
+    // Publish initial value (latched topic)
+    for (auto& pub : publishers)
+        pub.publish(boolMsg(false));
 
     FootControlWidget widget;
-    QObject::connect(&widget, &FootControlWidget::clutchEngagedChanged, [&](bool engaged) {
-        pub.publish(boolMsg(engaged));
+    QObject::connect(&widget, &FootControlWidget::pedalEngagedChanged, [&](Pedal i, bool engaged) {
+        publishers[i].publish(boolMsg(engaged));
     });
     widget.show();
 

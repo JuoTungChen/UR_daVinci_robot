@@ -44,7 +44,7 @@
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
       <remap from="haptic_buttons" to="/hid/touch/left/button_event" />
-      <remap from="clutch_engaged" to="/hid/clutch_engaged" />
+      <remap from="clutch_engaged" to="/hid/pedal/middle" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
       <remap from="grasper_angle_desired" to="servo_grasper_angle" />
     </node>
