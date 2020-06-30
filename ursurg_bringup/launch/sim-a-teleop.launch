@@ -18,7 +18,7 @@
   </node>
 
   <group ns="a">
-    <!-- Arm a (left): UR5e + EUA1 -->
+    <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ursim-1" />
       <param name="prefix" value="a_ur_" />

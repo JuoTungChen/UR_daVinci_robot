@@ -20,7 +20,7 @@
   </node>
 
   <group ns="a">
-    <!-- Arm a (left): UR5e + EUA1 -->
+    <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ursim-1" />
       <param name="prefix" value="a_ur_" />
@@ -52,7 +52,7 @@
   </group>
 
   <group ns="b">
-    <!-- Arm b (right): UR5 + EUA2 -->
+    <!-- Arm B: UR5 + EUA1 (S/Si tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ursim-2" />
       <param name="prefix" value="b_ur_" />
