@@ -8,6 +8,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <depend>kdl_parser</depend>
   <depend>roscpp</depend>
   <depend>ursurg_common</depend>
 </package>
