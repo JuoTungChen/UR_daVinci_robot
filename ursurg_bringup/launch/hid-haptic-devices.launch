@@ -3,10 +3,14 @@
 
   <!-- Human input devices -->
   <group ns="hid">
-    <node ns="touch" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
-      <rosparam param="device_names">["left", "right"]</rosparam>
-      <param name="prefix" value="touch_" />
-      <param name="publish_rate" value="500" />
+    <node ns="left" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
+      <param name="device_name" value="left" />
+      <param name="prefix" value="touch_left_" />
+    </node>
+
+    <node ns="right" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
+      <param name="device_name" value="right" />
+      <param name="prefix" value="touch_right_" />
     </node>
 
     <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
