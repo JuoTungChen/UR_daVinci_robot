@@ -1,26 +1,9 @@
 <?xml version="1.0"?>
-
 <launch>
   <arg name="a_kinematics_config" value="$(find ursurg_config)/config/ur-20185500393.yaml"/>
   <arg name="b_kinematics_config" value="$(find ursurg_config)/config/ur-2017356413.yaml"/>
 
   <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro a_kinematics_config_file:=$(arg a_kinematics_config) b_kinematics_config_file:=$(arg b_kinematics_config)" />
-
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
-    <param name="publish_frequency" value="25" />
-  </node>
-
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="screen">
-    <param name="rate" value="25" />
-    <param name="publish_default_positions" value="false" />
-    <rosparam>
-      source_list:
-        - a/ur/joint_states
-        - a/tool/joint_states
-        - b/ur/joint_states
-        - b/tool/joint_states
-    </rosparam>
-  </node>
 
   <group ns="a">
     <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
