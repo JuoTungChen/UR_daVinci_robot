@@ -68,9 +68,9 @@
   <!-- Robot platform -->
   <link name="platform">
     <visual>
-      <origin xyz="0 0 -0.4" rpy="0 0 ${pi/2}" />
+      <origin xyz="0 0 ${-0.815/2}" rpy="0 0 ${pi/2}" />
       <geometry>
-        <box size="1.2 0.8 0.8" />
+        <box size="1.2 0.8 0.815" />
       </geometry>
       <material name="platform_color">
         <color rgba="0.55 0.45 0.3 1.0" />
@@ -87,9 +87,9 @@
   <!-- Operating table -->
   <link name="operating_table">
     <visual>
-      <origin xyz="0 0 -0.245" rpy="0 0 ${pi/2}" />
+      <origin xyz="0 0 ${-0.55/2}" rpy="0 0 ${pi/2}" />
       <geometry>
-        <box size="0.635 0.49 0.49" />
+        <box size="0.635 0.49 0.55" />
       </geometry>
       <material name="operating_table_color">
         <color rgba="0.55 0.45 0.3 1.0" />
