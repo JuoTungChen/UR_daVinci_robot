@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+  <group ns="a">
+    <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
+      <param name="publish_rate" value="500" />
+      <param name="ur_prefix" value="a_ur_" />
+      <param name="haptic_prefix" value="touch_left_" />
+      <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
+      <remap from="clutch_engaged" to="/hid/clutch_engaged" />
+      <remap from="tcp_pose_desired" to="servo_joint_ik" />
+      <remap from="grasper_angle_desired" to="servo_grasper_angle" />
+    </node>
+  </group>
+
+  <group ns="b">
+    <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
+      <param name="publish_rate" value="125" />
+      <param name="ur_prefix" value="b_ur_" />
+      <param name="haptic_prefix" value="touch_right_" />
+      <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
+      <remap from="clutch_engaged" to="/hid/pedal/middle" />
+      <remap from="tcp_pose_desired" to="servo_joint_ik" />
+      <remap from="grasper_angle_desired" to="servo_grasper_angle" />
+    </node>
+  </group>
+</launch>
+
