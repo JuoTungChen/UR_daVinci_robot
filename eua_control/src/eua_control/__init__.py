@@ -105,6 +105,10 @@ class EUAController(object):
 
             rospy.loginfo("Starting in simulated mode")
         else:
+            # setserial [port] low_latency
+            import subprocess
+            subprocess.call(['setserial', rospy.get_param('~port'), 'low_latency'])
+
             # Find Dynamixel servo devices
             self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
 
