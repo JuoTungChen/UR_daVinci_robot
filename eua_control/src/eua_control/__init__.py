@@ -38,6 +38,29 @@ class EUA1Transmission(object):
         return np.linalg.solve(self.K, joint_angles)
 
 
+class EUA2Transmission(object):
+    def __init__(self):
+        t0 = 1.0     # motor-to-disc transmission (for all motors)
+        t1 = 1.0     # roll disc-to-joint transmission
+        t2 = 1.0186  # wrist disc-to-joint transmission
+        t3 = 1.2177  # grasper jaw disc-to-joint transmission (the same for both jaws)
+        w = 0.6089   # coupling between wrist and grasper jaws (the same for both jaws)
+
+        # Transmission/coupling matrix K
+        self.K = t0 * np.array([
+            [  t1,  0,     0,   0   ],
+            [  0,   t2,    0,   0   ],
+            [  0,   t2*w, -t3,  0   ],
+            [  0,  -t2*w,  0,   t3  ],
+        ])
+
+    def servo_to_joint(self, servo_angles):
+        return self.K.dot(servo_angles)
+
+    def joint_to_servo(self, joint_angles):
+        return np.linalg.solve(self.K, joint_angles)
+
+
 class EUAController(object):
     def __init__(self):
         self.loop_rate_hz = 100.0
@@ -51,7 +74,14 @@ class EUAController(object):
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
-        self.transmission = EUA1Transmission()
+        eua_type = rospy.get_param('~type', None)
+
+        if eua_type == 1:
+            self.transmission = EUA1Transmission()
+        elif eua_type == 2:
+            self.transmission = EUA2Transmission()
+        else:
+            raise ValueError("Bad EUA type '{}' (must be 1 or 2)".format(eua_type))
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -138,7 +168,7 @@ class EUAController(object):
             for i, dev in enumerate(self.chain.devices):
                 s.name.append(str(dev.id))
 
-                if isinstance(dev, dynamixel.device.AX12):
+                if isinstance(dev, dynamixel.device.AX12) or isinstance(dev, dynamixel.device.MX28):
                     d = dev.read_params(['present_position', 'present_speed', 'present_load'])
                     s.position[i] = d['present_position']
                     s.velocity[i] = d['present_speed']
