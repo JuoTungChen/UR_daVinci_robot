@@ -23,9 +23,9 @@
 
   <joint name="a_ur_tool_joint" type="fixed">
     <parent link="a_ur_ee_link" />
-    <child link="a_tool_mount" />
+    <child link="a_tool_tip_calib" />
     <!-- TODO: Calibrate to find this transform accurately -->
-    <origin xyz="0.09 0 0" rpy="${pi} 0 0" />
+    <origin xyz="0.66 0 0" rpy="0 0 0" />
   </joint>
 
   <!-- B) UR5 robot -->
@@ -44,9 +44,8 @@
 
   <joint name="b_eua2_tool_joint" type="fixed">
     <parent link="b_ur_ee_link" />
-    <child link="b_tool_mount" />
-    <!-- TODO: Calibrate to find this transform accurately -->
-    <origin xyz="0.075 0 0.04" rpy="0 0 0" />
+    <child link="b_tool_tip_calib" />
+    <origin xyz="0.56961 -0.0012618 0.056071" rpy="0 0 0" /> <!-- From calibration -->
   </joint>
 
   <!-- Touch haptic devices -->

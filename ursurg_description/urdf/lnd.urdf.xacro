@@ -10,8 +10,10 @@
     <color rgba="0.1 0.1 0.1 1.0" />
   </material>
 
-  <xacro:macro name="lnd_tip" params="prefix d" >
-    <link name="${prefix}lower_rod">
+  <xacro:macro name="lnd_tip" params="prefix" >
+    <link name="${prefix}tip_calib" />
+
+    <link name="${prefix}rotation">
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
         <geometry>
@@ -58,15 +60,15 @@
     <link name="${prefix}tcp2" />
 
     <joint name="${prefix}roll" type="revolute">
-      <parent link="${prefix}base" />
-      <child link="${prefix}lower_rod" />
-      <origin xyz="${d} 0 0" rpy="${-pi} ${-pi/2} 0" />
+      <parent link="${prefix}tip_calib" />
+      <child link="${prefix}rotation" />
+      <origin xyz="-0.018 0 0" rpy="${-pi} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-260)}" upper="${radians(260)}" effort="5" velocity="${pi}" />
     </joint>
 
     <joint name="${prefix}pitch" type="revolute">
-      <parent link="${prefix}lower_rod" />
+      <parent link="${prefix}rotation" />
       <child link="${prefix}wrist" />
       <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
@@ -108,21 +110,12 @@
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="lnd420006" params="prefix">
-    <link name="${prefix}mount" />
 
-    <link name="${prefix}base">
+  <xacro:macro name="lnd420006" params="prefix">
+    <xacro:lnd_tip prefix="${prefix}" />
+
+    <link name="${prefix}rod">
       <visual>
-        <origin xyz="-0.015 0 0" rpy="0 0 0" />
-        <geometry>
-          <box size="0.096 0.065 0.03" />
-        </geometry>
-        <material name="housing_light_blue">
-          <color rgba="0.500 0.867 1.0 1.0" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0.2285 0 0" rpy="0 ${pi/2} 0" />
         <geometry>
           <cylinder radius="0.004" length="0.457" />
         </geometry>
@@ -130,19 +123,50 @@
       </visual>
     </link>
 
-    <joint name="${prefix}base_mount_joint" type="fixed">
-      <parent link="${prefix}mount" />
-      <child link="${prefix}base" />
-      <origin xyz="0.015 0 0.015" rpy="0 0 0" />
+    <joint name="${prefix}rod_joint" type="fixed">
+      <parent link="${prefix}rotation" />
+      <child link="${prefix}rod" />
+      <origin xyz="0 0 ${-0.457/2 - 0.01}" rpy="0 0 0" />
     </joint>
 
-    <xacro:lnd_tip prefix="${prefix}" d="0.467" />
+    <link name="${prefix}housing">
+      <visual>
+        <origin xyz="-0.013 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.096 0.065 0.03" />
+        </geometry>
+        <material name="housing_light_blue">
+          <color rgba="0.500 0.867 1.0 1.0" />
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${prefix}housing_joint" type="fixed">
+      <parent link="${prefix}tip_calib" />
+      <child link="${prefix}housing" />
+      <origin xyz="${-0.018 - 0.01 - 0.457} 0 0" rpy="0 0 0" />
+    </joint>
   </xacro:macro>
 
   <xacro:macro name="lnd470006" params="prefix">
-    <link name="${prefix}mount" />
+    <xacro:lnd_tip prefix="${prefix}" />
 
-    <link name="${prefix}base">
+    <link name="${prefix}rod">
+      <visual>
+        <geometry>
+          <cylinder radius="0.004" length="0.5335" />
+        </geometry>
+        <material name="rod_dark_grey" />
+      </visual>
+    </link>
+
+    <joint name="${prefix}rod_joint" type="fixed">
+      <parent link="${prefix}rotation" />
+      <child link="${prefix}rod" />
+      <origin xyz="0 0 ${-0.5335/2 - 0.01}" rpy="0 0 0" />
+    </joint>
+
+    <link name="${prefix}housing">
       <visual>
         <origin xyz="-0.015 0 -0.019" rpy="0 0 0" />
         <geometry>
@@ -152,21 +176,13 @@
           <color rgba="1.0 1.0 1.0 1.0" />
         </material>
       </visual>
-      <visual>
-        <origin xyz="0.26675 0 0" rpy="0 ${pi/2} 0" />
-        <geometry>
-          <cylinder radius="0.004" length="0.5335" />
-        </geometry>
-        <material name="rod_dark_grey" />
-      </visual>
     </link>
 
-    <joint name="${prefix}base_mount_joint" type="fixed">
-      <parent link="${prefix}mount" />
-      <child link="${prefix}base" />
-      <origin xyz="-0.015 0 0.021" rpy="0 0 0" />
+    <joint name="${prefix}housing_joint" type="fixed">
+      <parent link="${prefix}tip_calib" />
+      <child link="${prefix}housing" />
+      <origin xyz="${-0.018 - 0.01 - 0.5335} 0 0" rpy="0 0 0" />
     </joint>
-
-    <xacro:lnd_tip prefix="${prefix}" d="0.5435" />
   </xacro:macro>
+
 </robot>
