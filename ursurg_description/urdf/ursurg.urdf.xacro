@@ -53,13 +53,13 @@
   <joint name="world_touch_left_fixed" type="fixed">
     <parent link="world" />
     <child link="touch_left_base" />
-    <origin xyz="-0.6 -0.5 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="0.3 -1.0 0" rpy="${pi/2} 0 0" />
   </joint>
 
   <joint name="world_touch_right_fixed" type="fixed">
     <parent link="world" />
     <child link="touch_right_base" />
-    <origin xyz="-0.6 -0.7 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="0.6 -1.0 0" rpy="${pi/2} 0 0" />
   </joint>
 
   <!-- Robot platform -->
