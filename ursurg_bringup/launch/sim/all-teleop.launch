@@ -30,7 +30,7 @@
       <param name="simulated" value="true" />
       <param name="prefix" value="a_tool_" />
       <rosparam>
-        joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
+        joint_device_mapping: {"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}
       </rosparam>
     </node>
 
@@ -80,9 +80,7 @@
       <remap from="clutch_engaged" to="/hid/pedal/middle" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
       <remap from="grasper_angle_desired" to="servo_grasper_angle" />
-
     </node>
   </group>
-
 </launch>
 
