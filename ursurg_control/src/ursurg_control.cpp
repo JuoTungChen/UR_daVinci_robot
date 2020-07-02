@@ -114,16 +114,15 @@ int main(int argc, char* argv[])
     }();
 
     // Inverse position kinematics
-    KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain, q_min, q_max, fk_solver, ik_solver_vel, 30, 1e-6);
+    KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain, q_min, q_max, fk_solver, ik_solver_vel, 30, 1e-4);
 
     // Current state
     KDL::JntArray q_current(chain.getNrOfJoints());
     std::array<double, 2> q_yaw{}; // grasper joints (yaw1, yaw2) are not part of 'chain'
 
     // Desired state
-    double grasp_desired = math::radians(60); // TODO: set through topic
-    // TODO: use q_desired instead of q_solution for initial IK solver q?
-    // KDL::JntArray q_desired(chain.getNrOfJoints());
+    double grasp_desired = math::radians(60);
+    KDL::JntArray q_desired(chain.getNrOfJoints());
 
     // Map to q_current by joint name
     auto q_current_by_name = [&]() {
@@ -146,16 +145,19 @@ int main(int argc, char* argv[])
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
-    auto solve_ik = [&](const auto& m) -> std::optional<KDL::JntArray> {
+    auto solve_ik = [&](const auto& m) {
+        // If q_desired is close to q_current we use that as the initial guess
+        const KDL::JntArray& q_init = ((q_current.data - q_desired.data).norm() < 0.1) ? q_desired : q_current;
         KDL::JntArray q_solution(chain.getNrOfJoints());
-        auto retval = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q_solution);
+        auto retval = ik_solver_pos.CartToJnt(q_init, convert_to<KDL::Frame>(m.pose), q_solution);
 
         if (retval != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
             ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(retval));
-            return {};
+            return false;
         }
 
-        return q_solution;
+        q_desired = q_solution;
+        return true;
     };
 
     auto make_msgs = [&](const KDL::JntArray& q, double grasp) {
@@ -196,10 +198,8 @@ int main(int argc, char* argv[])
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
                 // TODO: Interpolate path if set-point is far from current position
-                auto q = solve_ik(m);
-
-                if (q) {
-                    auto [m_robot, m_tool] = make_msgs(*q, grasp_desired);
+                if (solve_ik(m)) {
+                    auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
                     pub_robot_move_joint.publish(m_robot);
                     pub_tool_move_joint.publish(m_tool);
                 }
@@ -207,10 +207,8 @@ int main(int argc, char* argv[])
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
-                auto q = solve_ik(m);
-
-                if (q) {
-                    auto [m_robot, m_tool] = make_msgs(*q, grasp_desired);
+                if (solve_ik(m)) {
+                    auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
                     pub_robot_servo_joint.publish(m_robot);
                     pub_tool_servo_joint.publish(m_tool);
                 }
