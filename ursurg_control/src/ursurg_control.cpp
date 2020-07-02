@@ -74,8 +74,14 @@ int main(int argc, char* argv[])
 
     // Inverse velocity kinematics
     KDL::ChainIkSolverVel_wdls ik_solver_vel(chain);
-    auto weights_js = nh_priv.param("weights_joint_space", std::vector<double>(chain.getNrOfJoints(), 1.0));
-    ik_solver_vel.setWeightJS(Eigen::VectorXd::Map(weights_js.data(), weights_js.size()).asDiagonal());
+    auto weights_vector_js = nh_priv.param("weights_joint_space", std::vector<double>(chain.getNrOfJoints(), 1.0));
+    Eigen::MatrixXd Mq = Eigen::VectorXd::Map(weights_vector_js.data(), weights_vector_js.size()).asDiagonal();
+    auto retval = ik_solver_vel.setWeightJS(Mq);
+
+    if (retval != KDL::ChainIkSolverVel_wdls::E_NOERROR)
+        ROS_ERROR_STREAM("Setting IK solver joint space weighting matrix failed: "
+                         << ik_solver_vel.strError(retval)
+                         << "\n" << "Mq = \n" << Mq);
 
     // Find joint limits from URDF model
     auto [q_min, q_max] = [&]() {
@@ -144,8 +150,8 @@ int main(int argc, char* argv[])
         KDL::JntArray q_solution(chain.getNrOfJoints());
         auto retval = ik_solver_pos.CartToJnt(q_current, convert_to<KDL::Frame>(m.pose), q_solution);
 
-        if (retval < 0) {
-            ROS_WARN_STREAM("IK failed: " << ik_solver_pos.strError(retval));
+        if (retval != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
+            ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(retval));
             return {};
         }
 
