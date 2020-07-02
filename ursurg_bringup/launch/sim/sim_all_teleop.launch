@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
-
 <launch>
-  <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro"/>
+  <arg name="a_kinematics_config" value="$(find ur_e_description)/config/ur5e_default.yaml" />
+  <arg name="b_kinematics_config" value="$(find ur_description)/config/ur5_default.yaml" />
+
+  <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro a_kinematics_config_file:=$(arg a_kinematics_config) b_kinematics_config_file:=$(arg b_kinematics_config)" />
 
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
     <param name="publish_frequency" value="25" />

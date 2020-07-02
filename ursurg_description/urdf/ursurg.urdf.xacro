@@ -9,7 +9,6 @@
        Run xacro with arg 'kinematics_config_file' set to override the default
        kinematic configuration -->
   <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
-  <!-- <xacro:arg name="a_kinematics_config_file" default="$(find ur_e_description)/config/ur5e_default.yaml" /> -->
   <xacro:ur5e_robot prefix="a_ur_" joint_limited="false" kinematics_file="${load_yaml('$(arg a_kinematics_config_file)')}" />
 
   <joint name="a_world_ur_base_joint" type="fixed">
@@ -30,7 +29,6 @@
 
   <!-- B) UR5 robot -->
   <xacro:include filename="$(find ur_description)/urdf/ur5.urdf.xacro" />
-  <!-- <xacro:arg name="b_kinematics_config_file" default="$(find ur_description)/config/ur5_default.yaml" /> -->
   <xacro:ur5_robot prefix="b_ur_" joint_limited="false" kinematics_file="${load_yaml('$(arg b_kinematics_config_file)')}" />
 
   <joint name="b_world_ur_base_joint" type="fixed">
