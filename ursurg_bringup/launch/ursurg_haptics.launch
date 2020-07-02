@@ -12,9 +12,9 @@
       <param name="device_name" value="right" />
       <param name="prefix" value="touch_right_" />
     </node>
-  </group>
 
   <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
+  </group>
 
 </launch>
 
