@@ -257,12 +257,10 @@ class MX28(Device):
         ParamByte(26, 'd_gain', range_raw=(0, 254)),  # FIXME: conversion functions
         ParamByte(27, 'i_gain', range_raw=(0, 254)),
         ParamByte(28, 'p_gain', range_raw=(0, 254)),
-        # ParamWord(30, 'goal_position', range_raw=(-28672, 28672), to_human=lambda x: x*MX28.angle_unit, to_device=lambda x: int(round(x/MX28.angle_unit))),  # 0.29 deg to rad
-        ParamWord(30, 'goal_position', range_raw=(-28672, 28672), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, to_device=lambda x: tc_int2bin(int(round(x/MX28_2.angle_unit)), 16)),
+        ParamWord(30, 'goal_position', range_raw=(0, 65535), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, to_device=lambda x: tc_int2bin(int(round(x/MX28_2.angle_unit)), 16)),
         ParamWord(32, 'moving_speed', range_raw=(0, 2047), to_human=lambda x: rpm2radsec(dir2signed(x)*MX28.rpm_per_tick), to_device=lambda x: signed2dir(int(round(radsec2rpm(x/MX28.rpm_per_tick))))),
         ParamWord(34, 'torque_limit', range_raw=(0, 1023), to_human=lambda x: x/1023, to_device=lambda x: int(round(x*1023))),
-        # ParamWord(36, 'present_position', range_raw=(0, encoder_ticks-1), to_human=lambda x: x*MX28.angle_unit, readonly=True),
-        ParamWord(36, 'present_position', range_raw=(0, encoder_ticks-1), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, readonly=True),
+        ParamWord(36, 'present_position', range_raw=(0, 65535), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, readonly=True),
         ParamWord(38, 'present_speed', range_raw=(0, 2047), to_human=lambda x: rpm2radsec(dir2signed(x)*MX28.rpm_per_tick), readonly=True),
         ParamWord(40, 'present_load', range_raw=(0, 2047), to_human=lambda x: dir2signed(x)/1023, readonly=True),
         ParamByte(42, 'present_voltage', to_human=lambda x: x/10, readonly=True),

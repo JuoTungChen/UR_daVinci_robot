@@ -5,7 +5,7 @@
       port: "/dev/ttyUSB0"
       baud_rate: 2000000
       joint_device_mapping: {"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}
-      publish_servo_states: 1
+      publish_servo_states: true
       prefix: "a_tool_"
     </rosparam>
   </node>
@@ -15,7 +15,7 @@
       port: "/dev/ttyACM0"
       baud_rate: 1000000
       joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
-      publish_servo_states: 1
+      publish_servo_states: true
       prefix: "b_tool_"
     </rosparam>
   </node>

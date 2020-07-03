@@ -172,14 +172,9 @@ class EUAController(object):
             for i, dev in enumerate(self.chain.devices):
                 s.name.append(str(dev.id))
 
-                if isinstance(dev, dynamixel.device.AX12):
+                if isinstance(dev, dynamixel.device.AX12) or isinstance(dev, dynamixel.device.MX28):
                     d = dev.read_params(['present_position', 'present_speed', 'present_load'])
                     s.position[i] = d['present_position']
-                    s.velocity[i] = d['present_speed']
-                    s.effort[i] = d['present_load']
-                elif isinstance(dev, dynamixel.device.MX28):
-                    d = dev.read_params(['present_position', 'present_speed', 'present_load'])
-                    s.position[i] = d['present_position'] - dev.read_param_single('multiturn_offset')  # multi-turn mode
                     s.velocity[i] = d['present_speed']
                     s.effort[i] = d['present_load']
                 # elif isinstance(dev, dynamixel.device.MX28_2):

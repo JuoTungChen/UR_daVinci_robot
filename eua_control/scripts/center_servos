@@ -5,7 +5,7 @@ Bring Dynamixel servos with the given IDs to their center position.
 
 Usage example:
 
-    ./center_servos /dev/ttyUSB0 1000000 --device-ids 1 2 3 4
+    ./center_servos /dev/ttyUSB0 2000000 --device-ids 10 11 12 13
 """
 
 from __future__ import division, print_function
@@ -29,11 +29,12 @@ if __name__ == '__main__':
     if len(chain.devices) != len(args.device_ids):
         raise RuntimeError("Not all devices found")
 
+    # If limits both equal 2*pi (raw value 4095) the servo is in multi-turn mode
     limits = [(dev.read_param_single('cw_angle_limit'), dev.read_param_single('ccw_angle_limit')) for dev in chain.devices]
-    center = [lo + (hi - lo) / 2 for lo, hi in limits]
+    center = [lo + (hi - lo) / 2 if not np.allclose([lo, hi], 2*np.pi) else 0 for lo, hi in limits]
 
-    # print("Limits: {}".format(limits))
-    # print("Moving to center: {}".format(center))
+    print("Limits: {}".format(np.degrees(limits)))
+    print("Moving to center: {}".format(center))
 
     for dev, q in zip(chain.devices, center):
         dev.write_param_single('goal_position', q)
