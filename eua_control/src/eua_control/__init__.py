@@ -416,13 +416,10 @@ class EUACalibrator(object):
             servo_limits_upper = [6*np.pi] * 4
 
         detected_positions_in_servo_space = [None for i in range(4)]
-        reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 110, 110]))
+        reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw is really 110-115 deg.
 
-        # FIXME: hard coded values
-        if self.c.eua_type == 1:
-            thresholds = [0.16, 0.16, 0.13, 0.13]
-        elif self.c.eua_type == 2:
-            thresholds = [0.16, 0.17, 0.16, 0.16]
+        # FIXME: hard coded threshold values
+        thresholds = [0.16, 0.16, 0.13, 0.13]
 
         ROLL, PITCH, YAW1, YAW2 = range(4)
         LOWER, UPPER = range(2)
