@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+
+from __future__ import division, print_function
+
+import argparse
+import dynamixel
+import numpy as np
+import time
+
+
+device_ids = [13]
+chain = dynamixel.Chain('/dev/ttyUSB0', 2000000, device_ids)
+
+if not chain.devices:
+    raise RuntimeError("No devices found")
+
+if len(chain.devices) != len(device_ids):
+    raise RuntimeError("Not all devices found")
+
+dev = chain.devices[0]
+
+for goal in np.radians(np.arange(-7*360, 7*360+90, 90)):
+    dev.write_param_single('goal_position', goal)
+
+    while dev.read_param_single('moving'):
+        time.sleep(0.2)
+
+    present_position = dev.read_param_single('present_position')
+    multiturn_offset = dev.read_param_single('multiturn_offset')
+    print('present_position: {}'.format(np.degrees(present_position)))
+    print('multiturn_offset: {}'.format(np.degrees(multiturn_offset)))
+
+    if not np.isclose(present_position, goal, atol=np.radians(1)):
+        raise RuntimeError("Got bad present_position")

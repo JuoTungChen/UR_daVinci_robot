@@ -412,13 +412,17 @@ class EUACalibrator(object):
             servo_limits_upper = [dev.read_param_single('ccw_angle_limit') for dev in self.c.chain.devices]
         elif self.c.eua_type == 2:
             # MX28's in multi-turn mode
-            servo_limits_lower = [np.radians(-540)] * 4
-            servo_limits_upper = [np.radians(540)] * 4
+            servo_limits_lower = [-6*np.pi] * 4
+            servo_limits_upper = [6*np.pi] * 4
 
         detected_positions_in_servo_space = [None for i in range(4)]
         reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 110, 110]))
 
-        thresholds = [0.15, 0.14, 0.15, 0.15]  # FIXME: hard coded values
+        # FIXME: hard coded values
+        if self.c.eua_type == 1:
+            thresholds = [0.16, 0.16, 0.13, 0.13]
+        elif self.c.eua_type == 2:
+            thresholds = [0.16, 0.17, 0.16, 0.16]
 
         ROLL, PITCH, YAW1, YAW2 = range(4)
         LOWER, UPPER = range(2)
