@@ -6,6 +6,7 @@
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/hid/touch/left/button_event" />
       <remap from="clutch_engaged" to="/hid/pedal/left" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
       <remap from="grasper_angle_desired" to="servo_grasper_angle" />
@@ -18,6 +19,7 @@
       <param name="ur_prefix" value="b_ur_" />
       <param name="haptic_prefix" value="touch_right_" />
       <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/hid/touch/right/button_event" />
       <remap from="clutch_engaged" to="/hid/pedal/right" />
       <remap from="tcp_pose_desired" to="servo_joint_ik" />
       <remap from="grasper_angle_desired" to="servo_grasper_angle" />
