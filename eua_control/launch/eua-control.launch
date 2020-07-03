@@ -2,19 +2,21 @@
   <node ns="/a/tool/" name="eua_control" pkg="eua_control" type="controller" output="screen">
     <rosparam>
       type: 2
-      port: /dev/ttyUSB0
+      port: "/dev/ttyUSB0"
       baud_rate: 2000000
       joint_device_mapping: {"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}
       publish_servo_states: 1
+      prefix: "a_tool_"
     </rosparam>
   </node>
   <node ns="/b/tool/" name="eua_control" pkg="eua_control" type="controller" output="screen">
     <rosparam>
       type: 1
-      port: /dev/ttyACM0
+      port: "/dev/ttyACM0"
       baud_rate: 1000000
       joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
       publish_servo_states: 1
+      prefix: "b_tool_"
     </rosparam>
   </node>
 </launch>

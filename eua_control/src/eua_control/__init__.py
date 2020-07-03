@@ -7,12 +7,7 @@ import numpy as np
 import reflexxes
 import rospy
 import threading
-
-# We can still use the node in simulated mode if dynamixel module is not available
-try:
-    import dynamixel
-except ImportError:
-    pass
+import dynamixel
 
 
 class EUA1Transmission(object):
@@ -50,7 +45,7 @@ class EUA2Transmission(object):
         self.K = t0 * np.array([
             [  t1,  0,     0,   0   ],
             [  0,   t2,    0,   0   ],
-            [  0,   t2*w, -t3,  0   ],
+            [  0,   t2*w,  t3,  0   ],
             [  0,  -t2*w,  0,   t3  ],
         ])
 
@@ -68,20 +63,19 @@ class EUAController(object):
 
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
+        self.eua_type = rospy.get_param('~type', None)
         prefix = rospy.get_param('~prefix', '')
         self.joint_names = [prefix + n for n in ('roll', 'pitch', 'yaw1', 'yaw2')]
         self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').iteritems()}
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
-        eua_type = rospy.get_param('~type', None)
-
-        if eua_type == 1:
+        if self.eua_type == 1:
             self.transmission = EUA1Transmission()
-        elif eua_type == 2:
+        elif self.eua_type == 2:
             self.transmission = EUA2Transmission()
         else:
-            raise ValueError("Bad EUA type '{}' (must be 1 or 2)".format(eua_type))
+            raise ValueError("Bad EUA type '{}' (must be 1 or 2)".format(self.eua_type))
 
         # Trajectory generation
         self.tg = reflexxes.extra.PositionTrajectoryGenerator(
@@ -128,6 +122,12 @@ class EUAController(object):
 
             self.set_servo_calibration_offset(np.array(rospy.get_param('~servo_calibration_offset', [0, 0, 0, 0])))
 
+            for dev in self.chain.devices:
+                if isinstance(dev, dynamixel.device.MX28):
+                    # set multi-turn mode on MX28's
+                    dev.write_param_single('cw_angle_limit', 4095, raw=True)
+                    dev.write_param_single('ccw_angle_limit', 4095, raw=True)
+
 
         self.pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
         self.pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1) if rospy.get_param('~publish_servo_states', False) else None
@@ -172,16 +172,21 @@ class EUAController(object):
             for i, dev in enumerate(self.chain.devices):
                 s.name.append(str(dev.id))
 
-                if isinstance(dev, dynamixel.device.AX12) or isinstance(dev, dynamixel.device.MX28):
+                if isinstance(dev, dynamixel.device.AX12):
                     d = dev.read_params(['present_position', 'present_speed', 'present_load'])
                     s.position[i] = d['present_position']
                     s.velocity[i] = d['present_speed']
                     s.effort[i] = d['present_load']
-                elif isinstance(dev, dynamixel.device.MX28_2):
-                    d = dev.read_params(['present_load', 'present_velocity', 'present_position'])
-                    s.position[i] = d['present_position']
-                    s.velocity[i] = d['present_velocity']
+                elif isinstance(dev, dynamixel.device.MX28):
+                    d = dev.read_params(['present_position', 'present_speed', 'present_load'])
+                    s.position[i] = d['present_position'] - dev.read_param_single('multiturn_offset')  # multi-turn mode
+                    s.velocity[i] = d['present_speed']
                     s.effort[i] = d['present_load']
+                # elif isinstance(dev, dynamixel.device.MX28_2):
+                #     d = dev.read_params(['present_load', 'present_velocity', 'present_position'])
+                #     s.position[i] = d['present_position']
+                #     s.velocity[i] = d['present_velocity']
+                #     s.effort[i] = d['present_load']
                 else:
                     raise RuntimeError("Unknown device type '{}' in chain".format(type(dev)))
 
@@ -407,8 +412,13 @@ class EUACalibrator(object):
         self.c.set_servo_calibration_offset(np.zeros(4))
 
         # The target position is the servo limits
-        servo_limits_lower = [dev.read_param_single('cw_angle_limit') for dev in self.c.chain.devices]
-        servo_limits_upper = [dev.read_param_single('ccw_angle_limit') for dev in self.c.chain.devices]
+        if self.c.eua_type == 1:
+            servo_limits_lower = [dev.read_param_single('cw_angle_limit') for dev in self.c.chain.devices]
+            servo_limits_upper = [dev.read_param_single('ccw_angle_limit') for dev in self.c.chain.devices]
+        elif self.c.eua_type == 2:
+            # MX28's in multi-turn mode
+            servo_limits_lower = [np.radians(-540)] * 4
+            servo_limits_upper = [np.radians(540)] * 4
 
         detected_positions_in_servo_space = [None for i in range(4)]
         reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 110, 110]))
@@ -451,7 +461,11 @@ class EUACalibrator(object):
 
             # Move toward servo limit in the "grasper open"-direction (opposite
             # directions for each grasper jaw)
-            d = LOWER if j == YAW1 else UPPER
+            if self.c.eua_type == 1:
+                d = LOWER if j == YAW1 else UPPER
+            elif self.c.eua_type == 2:
+                d = UPPER
+
             target_position = servo_to_joint_for_joint(j, servo_limits_lower[j] + 0.01 if d == LOWER else servo_limits_upper[j] - 0.01)
             self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
 
