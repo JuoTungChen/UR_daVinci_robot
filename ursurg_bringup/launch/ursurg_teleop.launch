@@ -2,7 +2,7 @@
 <launch>
   <group ns="a">
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
-      <param name="publish_rate" value="500" />
+      <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
