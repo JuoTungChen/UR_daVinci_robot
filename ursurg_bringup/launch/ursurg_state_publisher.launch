@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <include file="$(find ursurg_bringup)/launch/ursurg-load-model.launch" />
+  <include file="$(find ursurg_bringup)/launch/ursurg_load_model.launch" />
 
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
     <param name="publish_frequency" value="25" />
