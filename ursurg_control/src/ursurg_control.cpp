@@ -114,7 +114,13 @@ int main(int argc, char* argv[])
     }();
 
     // Inverse position kinematics
-    KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain, q_min, q_max, fk_solver, ik_solver_vel, 30, 1e-4);
+    KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain,
+                                              q_min,
+                                              q_max,
+                                              fk_solver,
+                                              ik_solver_vel,
+                                              nh_priv.param("ik_pos_max_nr_itrs", 15),
+                                              nh_priv.param("ik_pos_epsilon", 1.0e-4));
 
     // Current state
     KDL::JntArray q_current(chain.getNrOfJoints());
