@@ -106,7 +106,7 @@ class EUAController(object):
             self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
 
             if not self.chain.devices:
-                raise RuntimeError("No devices found")
+                raise RuntimeError("No devices found on '{}'".format(self.chain.ser.name))
 
             for dev in self.chain.devices:
                 rospy.loginfo("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
