@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Bring Dynamixel servos with the given IDs to their center position.

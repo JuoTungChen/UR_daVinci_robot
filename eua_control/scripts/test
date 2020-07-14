@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import division, print_function
 
@@ -19,16 +19,20 @@ if len(chain.devices) != len(device_ids):
 
 dev = chain.devices[0]
 
-for goal in np.radians(np.arange(-7*360, 7*360+90, 90)):
-    dev.write_param_single('goal_position', goal)
 
-    while dev.read_param_single('moving'):
-        time.sleep(0.2)
+present_position = dev.read_param_single('present_position')
+print('present_position: {}'.format(np.degrees(present_position)))
 
-    present_position = dev.read_param_single('present_position')
-    multiturn_offset = dev.read_param_single('multiturn_offset')
-    print('present_position: {}'.format(np.degrees(present_position)))
-    print('multiturn_offset: {}'.format(np.degrees(multiturn_offset)))
+# for goal in np.radians(np.arange(-7*360, 7*360+90, 90)):
+#     dev.write_param_single('goal_position', goal)
 
-    if not np.isclose(present_position, goal, atol=np.radians(1)):
-        raise RuntimeError("Got bad present_position")
+#     while dev.read_param_single('moving'):
+#         time.sleep(0.2)
+
+#     present_position = dev.read_param_single('present_position')
+#     multiturn_offset = dev.read_param_single('multiturn_offset')
+#     print('present_position: {}'.format(np.degrees(present_position)))
+#     print('multiturn_offset: {}'.format(np.degrees(multiturn_offset)))
+
+#     if not np.isclose(present_position, goal, atol=np.radians(1)):
+#         raise RuntimeError("Got bad present_position")
