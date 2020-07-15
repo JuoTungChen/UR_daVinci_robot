@@ -10,13 +10,11 @@
 
     <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
       <param name="prefix" value="a_tool_" />
-      <rosparam>
-        simulated: false
-        type: 2
-        port: /dev/ttyUSB1
-        baud_rate: 2000000
-        joint_device_mapping: {"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}
-      </rosparam>
+      <param name="simulated" value="false" />
+      <param name="type" value="2" />
+      <param name="port" value="/dev/ftdi_FT4TFQFO" />
+      <param name="baud_rate" value="2000000" />
+      <rosparam param="joint_device_mapping">{"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}</rosparam>
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
@@ -36,13 +34,11 @@
 
     <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
       <param name="prefix" value="b_tool_" />
-      <rosparam>
-        simulated: false
-        type: 1
-        port: "/dev/ttyUSB0"
-        baud_rate: 1000000
-        joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
-      </rosparam>
+      <param name="simulated" value="false" />
+      <param name="type" value="1" />
+      <param name="port" value="/dev/ftdi_FT2XPDUQ" />
+      <param name="baud_rate" value="1000000" />
+      <rosparam param="joint_device_mapping">{"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}</rosparam>
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
