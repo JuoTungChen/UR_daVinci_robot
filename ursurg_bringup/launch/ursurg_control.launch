@@ -36,7 +36,7 @@
       <param name="prefix" value="b_tool_" />
       <param name="simulated" value="false" />
       <param name="type" value="1" />
-      <param name="port" value="/dev/ftdi_FT2XPDUQ" />
+      <param name="port" value="/dev/ftdi_FT4NNYP8" />
       <param name="baud_rate" value="1000000" />
       <rosparam param="joint_device_mapping">{"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}</rosparam>
     </node>
