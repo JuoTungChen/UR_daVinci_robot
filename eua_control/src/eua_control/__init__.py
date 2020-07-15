@@ -2,6 +2,7 @@ from __future__ import division, print_function
 
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerResponse
+import itertools
 import numpy as np
 import reflexxes
 import rospy
@@ -65,8 +66,8 @@ class EUAController(object):
         self.eua_type = rospy.get_param('~type', None)
         prefix = rospy.get_param('~prefix', '')
         self.joint_names = [prefix + n for n in ('roll', 'pitch', 'yaw1', 'yaw2')]
-        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').items()}
-        self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.items()})  # reverse mapping
+        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').iteritems()}
+        self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
         if self.eua_type == 1:
@@ -211,7 +212,7 @@ class EUAController(object):
             # Write goal position to each servo even if there is no trajectory
             # for that particular joint, as some DOFs are coupled (thus servos may
             # have to move to maintain a non-moving joint angle)
-            for dev, pos in zip(self.chain.devices, pos_servo_next):
+            for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
                 dev.write_param_single('goal_position', pos)
 
     def set_trajgen_target(self, m):
