@@ -1,8 +1,5 @@
-from __future__ import division, print_function
-
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerResponse
-import itertools
 import numpy as np
 import reflexxes
 import rospy
@@ -27,7 +24,7 @@ class EUA1Transmission(object):
         ])
 
     def servo_to_joint(self, servo_angles):
-        return self.K.dot(servo_angles)
+        return self.K @ servo_angles
 
     def joint_to_servo(self, joint_angles):
         return np.linalg.solve(self.K, joint_angles)
@@ -50,7 +47,7 @@ class EUA2Transmission(object):
         ])
 
     def servo_to_joint(self, servo_angles):
-        return self.K.dot(servo_angles)
+        return self.K @ servo_angles
 
     def joint_to_servo(self, joint_angles):
         return np.linalg.solve(self.K, joint_angles)
@@ -66,8 +63,8 @@ class EUAController(object):
         self.eua_type = rospy.get_param('~type', None)
         prefix = rospy.get_param('~prefix', '')
         self.joint_names = [prefix + n for n in ('roll', 'pitch', 'yaw1', 'yaw2')]
-        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').iteritems()}
-        self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.iteritems()})  # reverse mapping
+        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').items()}
+        self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.items()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
         if self.eua_type == 1:
@@ -212,7 +209,7 @@ class EUAController(object):
             # Write goal position to each servo even if there is no trajectory
             # for that particular joint, as some DOFs are coupled (thus servos may
             # have to move to maintain a non-moving joint angle)
-            for dev, pos in itertools.izip(self.chain.devices, pos_servo_next):
+            for dev, pos in zip(self.chain.devices, pos_servo_next):
                 dev.write_param_single('goal_position', pos)
 
     def set_trajgen_target(self, m):
@@ -266,7 +263,7 @@ class EUAController(object):
 
     def step_trajectory(self):
         try:
-            pos_joint_next = self.trajectory.next()[0]
+            pos_joint_next = next(self.trajectory)[0]
             self.write_joint_goal(pos_joint_next)
         except StopIteration:
             self.trajectory = None
@@ -416,7 +413,7 @@ class EUACalibrator(object):
             servo_limits_upper = [6*np.pi] * 4
 
         detected_positions_in_servo_space = [None for i in range(4)]
-        reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw is really 110-115 deg.
+        reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw limit is really around 110-115 deg.
 
         # FIXME: hard coded threshold values
         thresholds = [0.16, 0.16, 0.13, 0.13]
