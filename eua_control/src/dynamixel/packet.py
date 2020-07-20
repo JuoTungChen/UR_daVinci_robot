@@ -100,10 +100,10 @@ class Packet(object):
     length_header_trailer = length_header + length_trailer
     length_total_with_no_payload = length_header_trailer + length_message_header
 
-    def __init__(self, ident=None, instruction=None, payload=[]):
+    def __init__(self, ident=None, instruction=None, payload=None):
         self.id = ident
         self.instruction = instruction
-        self.payload = payload
+        self.payload = payload if payload is not None else []
 
     def __str__(self):
         fmt = ("Packet\n"
