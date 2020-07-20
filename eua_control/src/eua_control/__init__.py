@@ -423,6 +423,8 @@ class EUACalibrator(object):
 
         def detect_limit_blocking(j, d):
             while True:
+                rospy.sleep(self.c.loop_rate_hz / 100)
+
                 if self.c.trajectory is None:
                     raise EUACalibrationError("Trajectory reached the end (servo limit) without detecting the joint limit")
 
