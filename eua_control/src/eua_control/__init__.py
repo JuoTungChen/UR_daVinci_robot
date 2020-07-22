@@ -346,6 +346,14 @@ class EUACalibrator(object):
 
     def run(self):
         try:
+            # Zero current calibration offset
+            for dev in self.c.chain.devices:
+                dev.write_param_single('torque_enable', False)
+
+            rospy.sleep(0.2)
+            self.c.set_servo_calibration_offset(np.zeros(4))
+            rospy.sleep(0.2)
+
             # Subscribe to controller state changes
             self.c.state_update_callbacks.append(self.controller_state_changed)
 
@@ -396,12 +404,6 @@ class EUACalibrator(object):
     def _run(self):
         self.set_tg_limits_safe()
 
-        # Zero current calibration offset
-        for dev in self.c.chain.devices:
-            dev.write_param_single('torque_enable', False)
-        rospy.sleep(0.5)
-        self.c.set_servo_calibration_offset(np.zeros(4))
-
         # The target position is the servo limits
         if self.c.eua_type == 1:
             servo_limits_lower = [dev.read_param_single('cw_angle_limit') for dev in self.c.chain.devices]
@@ -415,14 +417,17 @@ class EUACalibrator(object):
         reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw limit is really around 110-115 deg.
 
         # FIXME: hard coded threshold values
-        thresholds = [0.16, 0.16, 0.13, 0.13]
+        if self.c.eua_type == 1:
+            thresholds = [0.16, 0.16, 0.13, 0.13]
+        elif self.c.eua_type == 2:
+            thresholds = [0.14, 0.15, 0.1, 0.1]
 
         ROLL, PITCH, YAW1, YAW2 = range(4)
         LOWER, UPPER = range(2)
 
         def detect_limit_blocking(j, d):
             while True:
-                rospy.sleep(self.c.loop_rate_hz / 100)
+                rospy.sleep(1.0 / self.c.loop_rate_hz / 2)
 
                 if self.c.trajectory is None:
                     raise EUACalibrationError("Trajectory reached the end (servo limit) without detecting the joint limit")
