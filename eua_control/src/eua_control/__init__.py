@@ -32,14 +32,13 @@ class EUA1Transmission(object):
 
 class EUA2Transmission(object):
     def __init__(self):
-        t0 = 1.0     # motor-to-disc transmission (for all motors)
-        t1 = 1.0     # roll disc-to-joint transmission
-        t2 = 1.0186  # wrist disc-to-joint transmission
-        t3 = 1.2177  # grasper jaw disc-to-joint transmission (the same for both jaws)
-        w = 0.6089   # coupling between wrist and grasper jaws (the same for both jaws)
+        t1 = 1.0  # roll disc-to-joint transmission
+        t2 = 1.0  # wrist disc-to-joint transmission
+        t3 = 1.15  # grasper jaw disc-to-joint transmission (the same for both jaws)
+        w = 0.75   # coupling between wrist and grasper jaws (the same for both jaws)
 
         # Transmission/coupling matrix K
-        self.K = t0 * np.array([
+        self.K = np.array([
             [  t1,  0,     0,   0   ],
             [  0,   t2,    0,   0   ],
             [  0,   t2*w,  t3,  0   ],
@@ -104,7 +103,7 @@ class EUAController(object):
             self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
 
             if not self.chain.devices:
-                raise RuntimeError("No devices found on '{}'".format(self.chain.io.ser.name))
+                raise RuntimeError("No devices found on {}".format(self.chain.io.ser.name))
 
             for dev in self.chain.devices:
                 rospy.loginfo("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
