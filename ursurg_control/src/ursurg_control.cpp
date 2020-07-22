@@ -146,6 +146,7 @@ int main(int argc, char* argv[])
     }();
 
     auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
+    auto pub_grasp = nh.advertise<sensor_msgs::JointState>("grasp_current", 1);
     auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur/move_joint", 1);
     auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur/servo_joint", 1);
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
@@ -234,12 +235,16 @@ int main(int argc, char* argv[])
             KDL::Frame f;
             fk_solver.JntToCart(q_current, f);
 
-            geometry_msgs::PoseStamped m;
-            m.header.stamp = ros::Time::now();
-            m.header.frame_id = chain_root;
-            m.pose = convert_to<geometry_msgs::Pose>(f);
+            geometry_msgs::PoseStamped m_pose;
+            m_pose.header.stamp = ros::Time::now();
+            m_pose.header.frame_id = chain_root;
+            m_pose.pose = convert_to<geometry_msgs::Pose>(f);
+            pub_pose.publish(m_pose);
 
-            pub_pose.publish(m);
+            sensor_msgs::JointState m_grasp;
+            m_grasp.header.stamp = ros::Time::now();
+            m_grasp.position.push_back(q_yaw[0] + q_yaw[1]);
+            pub_grasp.publish(m_grasp);
         });
 
     ros::spin();
