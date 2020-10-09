@@ -27,11 +27,12 @@ int main(int argc, char* argv[])
     bool clutch_engaged = false;
     std::string pose_tcp_frame_id;
     Eigen::Isometry3d t_robotbase_robottcp_current = Eigen::Isometry3d::Identity();
-    Eigen::Isometry3d t_robotbase_robottcp_desired = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
     Eigen::Isometry3d t_robotbase_haptictcp_current = Eigen::Isometry3d::Identity();
-    Eigen::Isometry3d t_robotbase_haptictcp_last = Eigen::Isometry3d::Identity();
-    std::array<bool, 2> buttons{};
-    double grasp_desired = math::radians(60); // TODO initialize from ursurg_control
+    Eigen::Isometry3d t_robotbase_haptictcp_last = t_robotbase_haptictcp_current;
+    std::array<bool, 2> buttons = {false, false};
+    double grasp_current = math::radians(45);
+    double grasp_desired = grasp_current;
 
     auto t_robotbase_hapticbase = [&]() {
         tf2_ros::Buffer tf_buffer;
@@ -57,12 +58,14 @@ int main(int argc, char* argv[])
 
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
-            nh, "clutch_engaged", 4, [&](const auto& m) {
+            nh, "clutch_engaged", 10, [&](const auto& m) {
                 clutch_engaged = m.data;
 
-                // Initially: desired robot TCP <- current robot TCP
-                if (clutch_engaged)
+                // Initially: desired <- current
+                if (clutch_engaged) {
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
+                    grasp_desired = grasp_current;
+                }
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
@@ -70,6 +73,12 @@ int main(int argc, char* argv[])
                 // Cache the most recent robot TCP pose
                 t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.pose);
                 pose_tcp_frame_id = m.header.frame_id;
+            },
+            ros::TransportHints().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "grasp_current", 1, [&](const auto& m) {
+                // Cache the most recent opening angle of tool grasper jaws
+                grasp_current = m.position.front();
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
@@ -90,7 +99,7 @@ int main(int argc, char* argv[])
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<touch_msgs::ButtonEvent>(
-            nh, "haptic_buttons", 1, [&](const auto& m) {
+            nh, "haptic_buttons", 10, [&](const auto& m) {
                 if (m.button == touch_msgs::ButtonEvent::BUTTON_GRAY)
                     buttons[0] = (m.event == touch_msgs::ButtonEvent::EVENT_PRESSED);
                 else if (m.button == touch_msgs::ButtonEvent::BUTTON_WHITE)
