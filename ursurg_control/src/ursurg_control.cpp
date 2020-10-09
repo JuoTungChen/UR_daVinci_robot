@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
                 lower(i) = limits->lower;
                 upper(i) = limits->upper;
             } else {
-                // Hacky-hack
+                // Hacky-hack: TCP joint
                 if (joint->getName() == chain_tip) {
                     lower(i) = math::radians(-45);
                     upper(i) = math::radians(45);
@@ -124,11 +124,12 @@ int main(int argc, char* argv[])
 
     // Current state
     KDL::JntArray q_current(chain.getNrOfJoints());
-    std::array<double, 2> q_yaw{}; // grasper joints (yaw1, yaw2) are not part of 'chain'
+    std::array<double, 2> q_current_yaw = {0, 0}; // grasper joints (yaw1, yaw2) are not part of 'chain'
+    double grasp_current = 0;
 
     // Desired state
-    double grasp_desired = math::radians(60);
-    KDL::JntArray q_desired(chain.getNrOfJoints());
+    KDL::JntArray q_desired = q_current;
+    double grasp_desired = grasp_current;
 
     // Map to q_current by joint name
     auto q_current_by_name = [&]() {
@@ -139,8 +140,8 @@ int main(int argc, char* argv[])
             dict.emplace(joint->getName(), &q_current(i++));
 
         // Also map grasper joint states (yaw1, yaw2) that are not part of 'chain'
-        dict.emplace(tool_joint_names[2], &q_yaw[0]);
-        dict.emplace(tool_joint_names[3], &q_yaw[1]);
+        dict.emplace(tool_joint_names[2], &q_current_yaw[0]);
+        dict.emplace(tool_joint_names[3], &q_current_yaw[1]);
 
         return dict;
     }();
@@ -189,22 +190,27 @@ int main(int argc, char* argv[])
     std::list<ros::Subscriber> subscribers{
         mksub<sensor_msgs::JointState>(
             nh, "ur/joint_states", 1, [&](const auto& m) {
+                // Cache current UR joint angles
                 for (std::size_t i = 0; i < m.position.size(); ++i)
                     *q_current_by_name.at(m.name[i]) = m.position[i];
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "tool/joint_states", 1, [&](const auto& m) {
+                // Cache current tool joint angles
                 for (std::size_t i = 0; i < m.position.size(); ++i)
                     *q_current_by_name.at(m.name[i]) = m.position[i];
 
-                // Tip TCP joint state is between the two grasper jaws
-                *q_current_by_name.at(chain_tip) = (q_yaw[0] - q_yaw[1]) / 2;
+                // TCP is between the two grasper jaws
+                *q_current_by_name.at(chain_tip) = (q_current_yaw[0] - q_current_yaw[1]) / 2;
+
+                // Grasper opening angle
+                grasp_current = q_current_yaw[0] + q_current_yaw[1];
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
-                // TODO: Interpolate path if set-point is far from current position
+                // TODO: Maybe interpolate path if set-point is far from current position?
                 if (solve_ik(m)) {
                     auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
                     pub_robot_move_joint.publish(m_robot);
@@ -222,7 +228,7 @@ int main(int argc, char* argv[])
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
-            nh, "servo_grasper_angle", 1, [&](const auto& m) {
+            nh, "servo_grasp", 1, [&](const auto& m) {
                 grasp_desired = m.position.front();
             },
             ros::TransportHints().tcpNoDelay()),
@@ -243,7 +249,7 @@ int main(int argc, char* argv[])
 
             sensor_msgs::JointState m_grasp;
             m_grasp.header.stamp = ros::Time::now();
-            m_grasp.position.push_back(q_yaw[0] + q_yaw[1]);
+            m_grasp.position.push_back(grasp_current);
             pub_grasp.publish(m_grasp);
         });
 
