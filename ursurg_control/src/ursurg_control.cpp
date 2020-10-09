@@ -54,6 +54,7 @@ int main(int argc, char* argv[])
         throw std::runtime_error("Failed to get kinematic chain between links: " + chain_root + ", " + chain_tip);
 
     // Add a virtual TCP frame to be placed between the grasper jaws
+    // TODO: Adjust offset depending on tool type
     chain_tip = ur_prefix + "tcp0";
     chain.addSegment(KDL::Segment(KDL::Joint(chain_tip, KDL::Joint::RotZ),
                                   KDL::Frame(KDL::Vector(0.009, 0, 0))));
@@ -100,8 +101,9 @@ int main(int argc, char* argv[])
             } else {
                 // Hacky-hack: TCP joint
                 if (joint->getName() == chain_tip) {
-                    lower(i) = math::radians(-45);
-                    upper(i) = math::radians(45);
+                    // TODO set TCP joint limits from yaw joint limits
+                    lower(i) = math::radians(-70);
+                    upper(i) = math::radians(70);
                 } else {
                     throw std::runtime_error("Joint '" + joint->getName() + "' has no limits!?");
                 }
