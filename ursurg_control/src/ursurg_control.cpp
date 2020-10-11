@@ -124,6 +124,8 @@ int main(int argc, char* argv[])
                                               nh_priv.param("ik_pos_max_nr_itrs", 15),
                                               nh_priv.param("ik_pos_epsilon", 1.0e-4));
 
+    bool new_servo_cmd = false;
+
     // Current state
     KDL::JntArray q_current(chain.getNrOfJoints());
     std::array<double, 2> q_current_yaw = {0, 0}; // grasper joints (yaw1, yaw2) are not part of 'chain'
@@ -155,19 +157,19 @@ int main(int argc, char* argv[])
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
-    auto solve_ik = [&](const auto& m) {
-        // If q_desired is close to q_current we use that as the initial guess
+    auto solve_ik = [&](const auto& m) -> std::optional<KDL::JntArray> {
+        // If (previous) q_desired is close to q_current we use that as the initial guess
         const KDL::JntArray& q_init = ((q_current.data - q_desired.data).norm() < 0.1) ? q_desired : q_current;
         KDL::JntArray q_solution(chain.getNrOfJoints());
         auto retval = ik_solver_pos.CartToJnt(q_init, convert_to<KDL::Frame>(m.pose), q_solution);
 
         if (retval != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
             ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(retval));
-            return false;
+            return {};
         }
 
-        q_desired = q_solution;
-        return true;
+//        q_desired = q_solution;
+        return q_solution;
     };
 
     auto make_msgs = [&](const KDL::JntArray& q, double grasp) {
@@ -213,7 +215,10 @@ int main(int argc, char* argv[])
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
                 // TODO: Maybe interpolate path if set-point is far from current position?
-                if (solve_ik(m)) {
+                auto q = solve_ik(m);
+
+                if (q) {
+                    q_desired = *q;
                     auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
                     pub_robot_move_joint.publish(m_robot);
                     pub_tool_move_joint.publish(m_tool);
@@ -222,23 +227,38 @@ int main(int argc, char* argv[])
             ros::TransportHints().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
-                if (solve_ik(m)) {
-                    auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
-                    pub_robot_servo_joint.publish(m_robot);
-                    pub_tool_servo_joint.publish(m_tool);
+                auto q = solve_ik(m);
+
+                if (q) {
+                    q_desired = *q;
+                    new_servo_cmd = true;
                 }
             },
             ros::TransportHints().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "servo_grasp", 1, [&](const auto& m) {
                 grasp_desired = m.position.front();
+                new_servo_cmd = true;
             },
             ros::TransportHints().tcpNoDelay()),
     };
 
+    // Schedule timer to publish servo commands
+    auto timer0 = nh.createSteadyTimer(
+        ros::WallDuration(1.0 / nh_priv.param("servo_rate", 125)),
+        [&](const auto&) {
+            if (!new_servo_cmd)
+                return;
+
+            auto [m_robot, m_tool] = make_msgs(q_desired, grasp_desired);
+            pub_robot_servo_joint.publish(m_robot);
+            pub_tool_servo_joint.publish(m_tool);
+
+        });
+
     // Schedule timer to publish TCP pose
-    auto timer = nh.createSteadyTimer(
-        ros::WallDuration(1.0 / 100),
+    auto timer1 = nh.createSteadyTimer(
+        ros::WallDuration(1.0 / nh_priv.param("publish_rate", 125)),
         [&](const auto&) {
             KDL::Frame f;
             fk_solver.JntToCart(q_current, f);
