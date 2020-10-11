@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
     double grasp_current = math::radians(45);
     double grasp_desired = grasp_current;
 
+    // FIXME assumes 'robot base' to 'haptic base' doesn't change while program is running
     auto t_robotbase_hapticbase = [&]() {
         tf2_ros::Buffer tf_buffer;
         tf2_ros::TransformListener tf_listener(tf_buffer);
@@ -54,7 +55,7 @@ int main(int argc, char* argv[])
     }();
 
     auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
-    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasper_angle_desired", 1);
+    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasp_desired", 1);
 
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
