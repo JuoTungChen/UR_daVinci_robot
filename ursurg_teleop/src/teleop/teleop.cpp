@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
         mksub<std_msgs::Bool>(
             nh, "clutch_engaged", 10, [&](const auto& m) {
                 // Initially: desired <- current
-                if (clutch_engaged) {
+                if (m.data) {
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
                     grasp_desired = grasp_current;
                     clutch_engaged = true;
