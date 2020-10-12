@@ -60,12 +60,13 @@ int main(int argc, char* argv[])
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
             nh, "clutch_engaged", 10, [&](const auto& m) {
-                clutch_engaged = m.data;
-
                 // Initially: desired <- current
                 if (clutch_engaged) {
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
                     grasp_desired = grasp_current;
+                    clutch_engaged = true;
+                } else {
+                    clutch_engaged = false;
                 }
             },
             ros::TransportHints().tcpNoDelay()),
