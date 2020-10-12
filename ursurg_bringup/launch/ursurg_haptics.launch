@@ -6,13 +6,13 @@
     <node ns="touch/left" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="left" />
       <param name="prefix" value="touch_left_" />
-      <param name="publish_rate" value="125" />
+      <param name="scheduler_rate" value="500" />
     </node>
 
     <node ns="touch/right" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="right" />
       <param name="prefix" value="touch_right_" />
-      <param name="publish_rate" value="125" />
+      <param name="scheduler_rate" value="500" />
     </node>
 
   <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
