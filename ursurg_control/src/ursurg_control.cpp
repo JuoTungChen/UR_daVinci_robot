@@ -162,8 +162,10 @@ int main(int argc, char* argv[])
         return dict;
     }();
 
-    auto pub_pose = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
-    auto pub_grasp = nh.advertise<sensor_msgs::JointState>("grasp_current", 1);
+    auto pub_pose_current = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_current", 1);
+    auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
+    auto pub_grasp_current = nh.advertise<sensor_msgs::JointState>("grasp_current", 1);
+    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasp_desired", 1);
     auto pub_robot_move_joint = nh.advertise<sensor_msgs::JointState>("ur/move_joint", 1);
     auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur/servo_joint", 1);
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
@@ -342,12 +344,18 @@ int main(int argc, char* argv[])
             m_pose.header.stamp = ros::Time::now();
             m_pose.header.frame_id = chain_root;
             m_pose.pose = convert_to<geometry_msgs::Pose>(tcp_pose_current);
-            pub_pose.publish(m_pose);
+            pub_pose_current.publish(m_pose);
+
+            m_pose.pose = convert_to<geometry_msgs::Pose>(tcp_pose_desired);
+            pub_pose_desired.publish(m_pose);
 
             sensor_msgs::JointState m_grasp;
             m_grasp.header.stamp = ros::Time::now();
             m_grasp.position.push_back(grasp_current);
-            pub_grasp.publish(m_grasp);
+            pub_grasp_current.publish(m_grasp);
+
+            m_grasp.position.back() = grasp_desired;
+            pub_grasp_desired.publish(m_grasp);
         });
 
     ros::spin();
