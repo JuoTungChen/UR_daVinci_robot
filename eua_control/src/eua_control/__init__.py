@@ -211,7 +211,46 @@ class EUAController(object):
             for dev, pos in zip(self.chain.devices, pos_servo_next):
                 dev.write_param_single('goal_position', pos)
 
-    def set_trajgen_target(self, m):
+    def set_joint_goal_direct(self, m):
+        """Set servo set-point directly without trajectory generation
+        """
+        if self.trajectory:
+            rospy.logwarn("Ignoring direct joint goal: already moving along trajectory")
+            return
+
+        if not m.name or not m.position:
+            rospy.logwarn("Bad input (name or position fields empty)")
+            return
+
+        # Map names to servo IDs
+        msg_dev_id = [self.joint_device_mapping[n] for n in m.name]
+
+        # Deep copy
+        target_position = self.tg.target_position.tolist()
+        target_velocity = self.tg.target_velocity.tolist()
+
+        for i, dev_id in enumerate(self.device_ids):
+            if dev_id in msg_dev_id:
+                j = msg_dev_id.index(dev_id)
+                target_position[i] = m.position[j]
+                target_velocity[i] = m.velocity[j] if m.velocity else 0
+
+        # Update trajectory generator current so that future trajectories starts
+        # from the correct initial position
+        self.tg.current_position = target_position
+        self.tg.current_velocity = target_velocity
+
+        # Write the target directly to servos without generating the actual
+        # trajectory
+        self.write_joint_goal(target_position)
+
+    def init_trajectory(self, m):
+        """Set a joint-space trajectory setpoint for the given servos
+        """
+        if not m.name or not m.position:
+            rospy.logwarn("Bad input (name or position fields empty)")
+            return
+
         # Map names to servo IDs
         msg_dev_id = [self.joint_device_mapping[n] for n in m.name]
 
@@ -231,33 +270,6 @@ class EUAController(object):
         #     self.transmission.joint_to_servo(self.tg.target_position),
         #     np.array(self.tg.target_position)))
 
-    def set_joint_goal_direct(self, m):
-        """Set servo set-point directly without trajectory generation
-        """
-        if self.trajectory:
-            rospy.logwarn("Ignoring direct joint goal: already moving along trajectory")
-            return
-
-        if not m.name or not m.position:
-            rospy.logwarn("Bad input (name or position fields empty)")
-            return
-
-        # Update trajectory generator target so that future trajectories starts
-        # from the correct initial position
-        self.set_trajgen_target(m)
-
-        # Write the target directly to servos without generating the actual
-        # trajectory
-        self.write_joint_goal(self.tg.target_position)
-
-    def init_trajectory(self, m):
-        """Set a joint-space trajectory setpoint for the given servos
-        """
-        if not m.name or not m.position:
-            rospy.logwarn("Bad input (name or position fields empty)")
-            return
-
-        self.set_trajgen_target(m)
         self.trajectory = self.tg.trajectory()
 
     def step_trajectory(self):
