@@ -429,7 +429,7 @@ class EUACalibrator(object):
         reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw limit is really around 110-115 deg.
 
         # FIXME: hard coded threshold values
-        thresholds = [0.16, 0.16, 0.13, 0.13]
+        thresholds = rospy.get_param('~homing_load_thresholds')
 
         ROLL, PITCH, YAW1, YAW2 = range(4)
         LOWER, UPPER = range(2)

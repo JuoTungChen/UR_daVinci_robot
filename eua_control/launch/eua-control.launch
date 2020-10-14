@@ -1,23 +1,24 @@
 <launch>
+
   <node ns="/a/tool/" name="eua_control" pkg="eua_control" type="controller" output="screen">
-    <rosparam>
-      type: 2
-      port: "/dev/ttyUSB0"
-      baud_rate: 2000000
-      joint_device_mapping: {"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}
-      publish_servo_states: true
-      prefix: "a_tool_"
-    </rosparam>
+    <param name="prefix" value="a_tool_" />
+    <param name="simulated" value="false" />
+    <param name="type" value="2" />
+    <param name="port" value="/dev/ttyUSB0" />
+    <param name="baud_rate" value="2000000" />
+    <rosparam param="joint_device_mapping">{"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}</rosparam>
+    <rosparam param="homing_load_thresholds">[0.11, 0.11, 0.09, 0.09]</rosparam>
   </node>
-  <node ns="/b/tool/" name="eua_control" pkg="eua_control" type="controller" output="screen">
-    <rosparam>
-      type: 1
-      port: "/dev/ttyACM0"
-      baud_rate: 1000000
-      joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}
-      publish_servo_states: true
-      prefix: "b_tool_"
-    </rosparam>
+
+  <node ns="/b/tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
+    <param name="prefix" value="b_tool_" />
+    <param name="simulated" value="false" />
+    <param name="type" value="1" />
+    <param name="port" value="/dev/ttyACM0" />
+    <param name="baud_rate" value="1000000" />
+    <rosparam param="joint_device_mapping">{"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3}</rosparam>
+    <rosparam param="homing_load_thresholds">[0.16, 0.16, 0.13, 0.13]</rosparam>
   </node>
+
 </launch>
 
