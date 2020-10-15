@@ -30,7 +30,7 @@
   <joint name="a_ur_tool_joint" type="fixed">
     <parent link="a_ur_ee_link" />
     <child link="a_tool_tip_calib" />
-    <origin xyz="0.6634 -0.00077763 0.0078248" rpy="0 0 0" /> <!-- From calibration -->
+    <origin xyz="0.64045, 0.0021887, 0.035773" rpy="0 0 0" /> <!-- From calibration -->
   </joint>
 
   <!-- B) UR5 robot -->
