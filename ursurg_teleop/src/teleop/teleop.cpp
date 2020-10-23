@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
     };
 
     auto timer = nh.createSteadyTimer(
-        ros::WallDuration(1.0 / nh_priv.param("publish_rate", 500)),
+        ros::WallDuration(1.0 / nh_priv.param("publish_rate", 125)),
         [&](const ros::SteadyTimerEvent& e) {
             if (!clutch_engaged)
                 return;
@@ -129,12 +129,14 @@ int main(int argc, char* argv[])
                 grasp_desired -= grasp_rate * dt.toSec();
 
                 sensor_msgs::JointState m_grasp;
+                m_grasp.header.stamp = m.header.stamp;
                 m_grasp.position.push_back(grasp_desired);
                 pub_grasp_desired.publish(m_grasp);
             } else if (buttons[1] && !buttons[0]) {
                 grasp_desired += grasp_rate * dt.toSec();
 
                 sensor_msgs::JointState m_grasp;
+                m_grasp.header.stamp = m.header.stamp;
                 m_grasp.position.push_back(grasp_desired);
                 pub_grasp_desired.publish(m_grasp);
             }
