@@ -4,6 +4,7 @@
     <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ur-20185500393" />
+      <param name="servo_rate" value="125" />
       <param name="prefix" value="a_ur_" />
       <remap from="teach_mode_enable" to="/hid/pedal/left" />
     </node>
@@ -31,6 +32,7 @@
     <!-- Arm B: UR5 + EUA1 (S/Si tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ur-2017356413" />
+      <param name="servo_rate" value="125" />
       <param name="prefix" value="b_ur_" />
       <remap from="teach_mode_enable" to="/hid/pedal/left" />
     </node>
