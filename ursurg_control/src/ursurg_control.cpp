@@ -236,7 +236,7 @@ int main(int argc, char* argv[])
 
                 init.ur = true;
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().udp()),
         mksub<sensor_msgs::JointState>(
             nh, "tool/joint_states", 1, [&](const auto& m) {
                 // Cache current tool joint angles
@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
 
                 init.tool = true;
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().udp()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "move_joint_ik", 1, [&](const auto& m) {
                 if (!init.fk)
@@ -265,7 +265,7 @@ int main(int argc, char* argv[])
                     pub_tool_move_joint.publish(m_tool);
                 }
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "move_grasp", 1, [&](const auto& m) {
                 if (!init.fk)
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
                     pub_tool_move_joint.publish(m_tool);
                 }
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().tcp().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
                 if (!init.fk)
@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
                 tcp_pose_desired = convert_to<KDL::Frame>(m.pose);
                 new_servo_cmd = true;
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().udp()),
         mksub<sensor_msgs::JointState>(
             nh, "servo_grasp", 1, [&](const auto& m) {
                 if (!init.fk)
@@ -299,7 +299,7 @@ int main(int argc, char* argv[])
                 grasp_desired = m.position.front();
                 new_servo_cmd = true;
             },
-            ros::TransportHints().tcpNoDelay()),
+            ros::TransportHints().udp()),
     };
 
     // Schedule timer to solve IK and publish servo commands
