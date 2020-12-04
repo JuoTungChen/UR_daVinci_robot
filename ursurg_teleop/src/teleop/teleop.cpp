@@ -76,13 +76,13 @@ int main(int argc, char* argv[])
                 t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.pose);
                 pose_tcp_frame_id = m.header.frame_id;
             },
-            ros::TransportHints().udp()),
+            ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "grasp_current", 1, [&](const auto& m) {
                 // Cache the most recent opening angle of tool grasper jaws
                 grasp_current = m.position.front();
             },
-            ros::TransportHints().udp()),
+            ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
             nh, "haptic_pose", 1, [&](const auto& m) {
                 t_robotbase_haptictcp_last = std::move(t_robotbase_haptictcp_current);
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_desired * t_incr;
                 }
             },
-            ros::TransportHints().udp()),
+            ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<touch_msgs::ButtonEvent>(
             nh, "haptic_buttons", 10, [&](const auto& m) {
                 if (m.button == touch_msgs::ButtonEvent::BUTTON_GRAY)
