@@ -10,10 +10,8 @@ include_directories(
 )
 
 catkin_package(
-  #CATKIN_DEPENDS
   DEPENDS Boost
   INCLUDE_DIRS include
-  CFG_EXTRAS cmake_modules-extras.cmake
 )
 
 file(GLOB_RECURSE header_files "include/*[.h|.hpp]")
@@ -23,10 +21,4 @@ add_custom_target(header_target SOURCES ${header_files})
 install(
   DIRECTORY include/ursurg_common
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-)
-
-# Install cmake files
-install(
-  DIRECTORY cmake/Modules
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/cmake
 )
