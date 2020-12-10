@@ -1,6 +1,6 @@
 #include <ursurg_common/conversions/kdl.h>
 #include <ursurg_common/math.h>
-#include <ursurg_common/rosutility.h>
+#include <ursurg_common/rosutility/subscription.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
@@ -321,7 +321,7 @@ int main(int argc, char* argv[])
             new_servo_cmd = false;
         });
 
-    // Schedule timer to compute and publish forward kinematics
+    // Schedule timer to compute forward kinematics and publish TCP pose
     auto timer1 = nh.createSteadyTimer(
         ros::WallDuration(1.0 / nh_priv.param("publish_rate", 125)),
         [&](const auto&) {

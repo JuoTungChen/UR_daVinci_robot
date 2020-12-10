@@ -1,6 +1,6 @@
 ﻿#include <ursurg_common/conversions/eigen.h>
 #include <ursurg_common/math.h>
-#include <ursurg_common/rosutility.h>
+#include <ursurg_common/rosutility/subscription.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
