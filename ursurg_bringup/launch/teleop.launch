@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="a_kinematics_config" value="$(find ursurg_description)/calibration/ur-20185500393.yaml" />
-  <arg name="b_kinematics_config" value="$(find ursurg_description)/calibration/ur-2017356413.yaml" />
+  <arg name="a_kinematics_config" value="$(find ursurg_description)/config/ur-20185500393.yaml" />
+  <arg name="b_kinematics_config" value="$(find ursurg_description)/config/ur-2017356413.yaml" />
 
   <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro a_kinematics_config_file:=$(arg a_kinematics_config) b_kinematics_config_file:=$(arg b_kinematics_config)" />
 
