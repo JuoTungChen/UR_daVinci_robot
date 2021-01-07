@@ -32,3 +32,12 @@ ros::Subscriber mksub_p(ros::NodeHandle& nh,
                            ros::VoidConstPtr(),
                            transport_hints);
 }
+
+template<typename M, typename F>
+ros::ServiceServer mksrv(ros::NodeHandle& nh, const std::string& service, F&& callback)
+{
+    using MReq = typename M::Request;
+    using MRes = typename M::Response;
+    return nh.advertiseService<MReq, MRes>(service,
+                                           boost::function<bool(MReq&, MRes&)>(std::move(callback)));
+}
