@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
 
     auto pub_robot_servo_joint = nh.advertise<sensor_msgs::JointState>("ur/servo_joint", 1);
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
-    auto pub_rcm = nh.advertise<sensor_msgs::JointState>("rcm", 1);
+    auto pub_rcm = nh.advertise<geometry_msgs::PointStamped>("rcm", 1);
 
     // Solve inverse kinematics for the chain given the desired TCP pose
     auto solve_ik_tcp = [&](const KDL::Frame& pose_desired) -> std::optional<KDL::JntArray> {
