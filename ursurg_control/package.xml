@@ -10,6 +10,7 @@
 
   <depend>kdl_parser</depend>
   <depend>roscpp</depend>
+  <depend>rospy</depend>
   <depend>ursurg_common</depend>
   <depend>ursurg_msgs</depend>
 </package>

@@ -4,6 +4,7 @@ project(ursurg_control)
 find_package(catkin REQUIRED COMPONENTS
   kdl_parser
   roscpp
+  rospy
   ursurg_common
   ursurg_msgs
 )
@@ -11,6 +12,7 @@ find_package(urdfdom_headers REQUIRED)
 find_package(orocos_kdl REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+catkin_python_setup()
 catkin_package()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,3 +45,6 @@ target_include_directories(ursurg_control_rcm
     ${catkin_INCLUDE_DIRS}
 )
 target_compile_options(ursurg_control_rcm PRIVATE -Wall -Wextra)
+
+catkin_install_python(PROGRAMS scripts/set_rcm
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
