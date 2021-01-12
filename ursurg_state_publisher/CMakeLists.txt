@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
     sensor_msgs
     tf2_ros
     tf2_kdl
+    ursurg_common
 )
 find_package(urdfdom_headers REQUIRED)
 find_package(orocos_kdl REQUIRED)

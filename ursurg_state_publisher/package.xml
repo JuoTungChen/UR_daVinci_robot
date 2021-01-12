@@ -1,7 +1,7 @@
 <package format="2">
   <name>ursurg_state_publisher</name>
   <version>0.1.0</version>
-  <description>A customized version of the standard ROS robot_state_publisher package</description>
+  <description>A customized version of robot_state_publisher</description>
   <author email="isucan@gmail.com">Ioan Sucan</author>
   <author email="jacquelinekay1@gmail.com">Jackie Kay</author>
   <author email="wim@willowgarage.com">Wim Meeussen</author>
@@ -15,9 +15,9 @@
   <depend>roscpp</depend>
   <depend>rostime</depend>
   <depend>sensor_msgs</depend>
-  <depend>tf</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_kdl</depend>
+  <depend>ursurg_common</depend>
 
   <build_depend>liborocos-kdl-dev</build_depend>
   <build_depend>liburdfdom-headers-dev</build_depend>

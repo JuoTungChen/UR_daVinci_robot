@@ -33,6 +33,8 @@
       </visual>
     </link>
 
+    <link name="${prefix}jaw_hinge" />
+
     <link name="${prefix}jaw0" />
 
     <link name="${prefix}jaw1">
@@ -55,6 +57,8 @@
       </visual>
     </link>
 
+    <link name="${prefix}tcp0" />
+
     <link name="${prefix}tcp1" />
 
     <link name="${prefix}tcp2" />
@@ -75,14 +79,23 @@
       <limit lower="${radians(-80)}" upper="${radians(80)}" effort="0.25" velocity="${2*pi}" />
     </joint>
 
-    <joint name="${prefix}jaw0_fixed" type="fixed">
+    <joint name="${prefix}jaw_hinge_fixed" type="fixed">
       <parent link="${prefix}wrist" />
-      <child link="${prefix}jaw0" />
+      <child link="${prefix}jaw_hinge" />
       <origin xyz="0.0091 0 0" rpy="${pi/2} 0 0" />
     </joint>
 
+    <!-- This is not a real physical joint, but rather yaw0 = (yaw1 - yaw2) / 2,
+         ie. the TCP frame is at an angle between the grasper jaws. -->
+    <joint name="${prefix}yaw0" type="continuous">
+      <parent link="${prefix}jaw_hinge" />
+      <child link="${prefix}jaw0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="0 0 1" />
+    </joint>
+
     <joint name="${prefix}yaw1" type="revolute">
-      <parent link="${prefix}jaw0" />
+      <parent link="${prefix}jaw_hinge" />
       <child link="${prefix}jaw1" />
       <origin xyz="0 0 0" rpy="0 0 0" />
       <axis xyz="0 0 1" />
@@ -90,11 +103,17 @@
     </joint>
 
     <joint name="${prefix}yaw2" type="revolute">
-      <parent link="${prefix}jaw0" />
+      <parent link="${prefix}jaw_hinge" />
       <child link="${prefix}jaw2" />
       <origin xyz="0 0 0" rpy="${pi} 0 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-75)}" upper="${radians(75)}" effort="0.2" velocity="${2*pi}" />
+    </joint>
+
+    <joint name="${prefix}tcp0_fixed" type="fixed">
+      <parent link="${prefix}jaw0" />
+      <child link="${prefix}tcp0" />
+      <origin xyz="0.009 0 0" rpy="0 0 0" />
     </joint>
 
     <joint name="${prefix}tcp1_fixed" type="fixed">
