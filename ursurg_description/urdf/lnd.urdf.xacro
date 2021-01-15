@@ -87,11 +87,12 @@
 
     <!-- This is not a real physical joint, but rather yaw0 = (yaw1 - yaw2) / 2,
          ie. the TCP frame is at an angle between the grasper jaws. -->
-    <joint name="${prefix}yaw0" type="continuous">
+    <joint name="${prefix}yaw0" type="revolute">
       <parent link="${prefix}jaw_hinge" />
       <child link="${prefix}jaw0" />
       <origin xyz="0 0 0" rpy="0 0 0" />
       <axis xyz="0 0 1" />
+      <limit lower="${radians(-75)}" upper="${radians(75)}" effort="0.2" velocity="${2*pi}" />
     </joint>
 
     <joint name="${prefix}yaw1" type="revolute">
