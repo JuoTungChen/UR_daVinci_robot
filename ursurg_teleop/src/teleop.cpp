@@ -32,8 +32,9 @@ int main(int argc, char* argv[])
     Eigen::Isometry3d t_robotbase_haptictcp_current = Eigen::Isometry3d::Identity();
     Eigen::Isometry3d t_robotbase_haptictcp_last = t_robotbase_haptictcp_current;
     std::array<bool, 2> buttons = {false, false};
-    double grasp_current = math::radians(45);
+    double grasp_current = math::radians(60);
     double grasp_desired = grasp_current;
+    double grasp_rate = nh_priv.param("grasp_rate", math::pi / 4);
 
     // FIXME assumes 'robot base' to 'haptic base' doesn't change while program is running
     auto t_robotbase_hapticbase = [&]() {
@@ -114,7 +115,6 @@ int main(int argc, char* argv[])
             if (!init_current || !clutch_engaged)
                 return;
 
-            double grasp_rate = math::pi / 4; // TODO: enable setting grasp rate via service call
             auto dt = e.current_real - e.last_real;
 
             if (buttons[0] && !buttons[1]) {
