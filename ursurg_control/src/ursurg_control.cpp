@@ -4,6 +4,7 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
+#include <ursurg_msgs/ToolEndEffectorStateStamped.h>
 
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
@@ -20,21 +21,21 @@ struct Init
     bool tool;
 };
 
-void append_yaw0(const std::string& prefix, sensor_msgs::JointState& m)
+void appendYaw0(const std::string& prefix, sensor_msgs::JointState& m)
 {
     // Find indices of yaw1 and yaw2 joints
     std::ptrdiff_t j = -1;
     std::ptrdiff_t k = -1;
 
-    for (std::size_t i = 0; i < m.name.size(); ++i) {
-        if ((j != -1) && (m.name[i].rfind("yaw1") != std::string::npos))
+    for (std::ptrdiff_t i = m.name.size() - 1; i >= 0; --i) { // expect yaw1 and yaw2 at end
+        if ((j == -1) && (m.name[i].rfind("yaw1") != std::string::npos))
             j = i;
-        else if ((k != -1) && (m.name[i].rfind("yaw2") != std::string::npos))
+        else if ((k == -1) && (m.name[i].rfind("yaw2") != std::string::npos))
             k = i;
     }
 
     if (j != -1 && k != -1) {
-        // yaw0 is at the spot right between yaw1 and yaw2
+        // yaw0 angle is between yaw1 and yaw2
         m.name.push_back(prefix + "yaw0");
         m.position.push_back((m.position[j] - m.position[k]) / 2);
     }
@@ -142,13 +143,8 @@ int main(int argc, char* argv[])
     KDL::JntArray q_desired(chain.getNrOfJoints());
     std::array<double, 2> q_yaw_dummy = {0, 0}; // grasper joints (yaw1, yaw2) are not part of 'chain'
 
-    // Desired manipulator state (target for IK solution)
-    KDL::Frame tcp_pose_desired = KDL::Frame::Identity();
-    double grasp_desired = 0;
-
     // State signals
     Init init{false, false};
-    bool new_servo_cmd = false;
 
     // Map to q_current by joint name
     auto q_current_by_name = [&]() {
@@ -203,10 +199,10 @@ int main(int argc, char* argv[])
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
         m_tool.name = tool_joint_names;
-        m_tool.position.push_back(q_chain(6));
-        m_tool.position.push_back(q_chain(7));
-        m_tool.position.push_back(q_yaw[0]);
-        m_tool.position.push_back(q_yaw[1]);
+        m_tool.position.push_back(q_chain(6)); // roll
+        m_tool.position.push_back(q_chain(7)); // pitch (wrist)
+        m_tool.position.push_back(q_yaw[0]);   // yaw1 (jaw1)
+        m_tool.position.push_back(q_yaw[1]);   // yaw2 (jaw2)
 
         return std::make_tuple(m_robot, m_tool);
     };
@@ -223,7 +219,7 @@ int main(int argc, char* argv[])
             ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "tool/joint_states", 1, [&](auto m) {
-                append_yaw0(tool_prefix, m);
+                appendYaw0(tool_prefix, m);
 
                 // Cache current tool joint angles
                 for (std::size_t i = 0; i < m.position.size(); ++i)
@@ -232,50 +228,36 @@ int main(int argc, char* argv[])
                 init.tool = true;
             },
             ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<geometry_msgs::PoseStamped>(
+        mksub<ursurg_msgs::ToolEndEffectorState>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
                 if (!init.ur || !init.tool)
                     return;
 
-                tcp_pose_desired = convert_to<KDL::Frame>(m.pose);
-                new_servo_cmd = true;
-            },
-            ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "servo_grasp", 1, [&](const auto& m) {
-                if (!init.ur || !init.tool)
-                    return;
+                // Desired manipulator state (target for IK solution)
+                auto pose_desired = convert_to<KDL::Frame>(m.pose);
+                auto grasp_desired = m.grasper_angle;
 
-                grasp_desired = m.position.front();
-                new_servo_cmd = true;
+                // If q_current and q_desired (the previous IK solution) are close,
+                // we use q_desired as the seed for the IK algorithm
+                const auto& q_init = ((q_desired.data - q_current.data).norm() > math::half_pi) ? q_current : q_desired;
+
+                // Find configuration of joints in 'chain'
+                if (auto err = ik_solver_pos.CartToJnt(q_init, pose_desired, q_desired);
+                    err != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
+                    ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(err));
+                    return;
+                }
+
+                // Find joint configuration for yaw1, yaw2
+                auto q_yaw = solve_ik_yaw(q_desired(8), grasp_desired);
+
+                auto [m_robot, m_tool] = q_to_msgs(q_desired, q_yaw);
+                pub_robot_servo_joint.publish(m_robot);
+                pub_tool_servo_joint.publish(m_tool);
+
             },
             ros::TransportHints().udp().tcp().tcpNoDelay()),
     };
-
-    // Schedule timer to solve IK and publish servo commands
-    auto timer0 = nh.createSteadyTimer(
-        ros::WallDuration(1.0 / nh_priv.param("servo_rate", 125)),
-        [&](const auto&) {
-            if (!new_servo_cmd || !init.ur || !init.tool)
-                return;
-
-            // If q_current and q_desired (the previous IK solution) are close,
-            // we use q_desired as the seed for the IK algorithm
-            auto q_init = ((q_desired.data - q_current.data).norm() > math::half_pi) ? q_current : q_desired;
-
-            if (auto err = ik_solver_pos.CartToJnt(q_init, tcp_pose_desired, q_desired);
-                err != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
-                ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(err));
-                return;
-            }
-
-            auto q_yaw = solve_ik_yaw(q_desired(8), grasp_desired);
-            auto [m_robot, m_tool] = q_to_msgs(q_desired, q_yaw);
-            pub_robot_servo_joint.publish(m_robot);
-            pub_tool_servo_joint.publish(m_tool);
-
-            new_servo_cmd = false;
-        });
 
     ros::spin();
 

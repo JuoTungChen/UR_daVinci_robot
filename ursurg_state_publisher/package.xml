@@ -18,6 +18,7 @@
   <depend>tf2_ros</depend>
   <depend>tf2_kdl</depend>
   <depend>ursurg_common</depend>
+  <depend>ursurg_msgs</depend>
 
   <build_depend>liborocos-kdl-dev</build_depend>
   <build_depend>liburdfdom-headers-dev</build_depend>

@@ -3,9 +3,9 @@
 #include <ursurg_common/rosutility/subscription.h>
 
 #include <geometry_msgs/PoseStamped.h>
-#include <sensor_msgs/JointState.h>
 #include <std_msgs/Bool.h>
 #include <touch_msgs/ButtonEvent.h>
+#include <ursurg_msgs/ToolEndEffectorStateStamped.h>
 
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
@@ -24,6 +24,7 @@ int main(int argc, char* argv[])
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
+    bool init_current = false;
     bool clutch_engaged = false;
     std::string pose_tcp_frame_id;
     Eigen::Isometry3d t_robotbase_robottcp_current = Eigen::Isometry3d::Identity();
@@ -54,8 +55,7 @@ int main(int argc, char* argv[])
         throw std::runtime_error("Failed to get transform from '" + robot_base + "' to '" + haptic_base + "'");
     }();
 
-    auto pub_pose_desired = nh.advertise<geometry_msgs::PoseStamped>("tcp_pose_desired", 1);
-    auto pub_grasp_desired = nh.advertise<sensor_msgs::JointState>("grasp_desired", 1);
+    auto pub_ee_desired = nh.advertise<ursurg_msgs::ToolEndEffectorState>("ee_state_desired", 1);
 
     std::list<ros::Subscriber> subs{
         mksub<std_msgs::Bool>(
@@ -63,6 +63,8 @@ int main(int argc, char* argv[])
                 // Initially: desired <- current
                 if (m.data) {
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
+                    // FIXME: this is not nice because grasper angle computed
+                    // from kinematics is quite inaccurate
                     grasp_desired = grasp_current;
                     clutch_engaged = true;
                 } else {
@@ -70,17 +72,13 @@ int main(int argc, char* argv[])
                 }
             },
             ros::TransportHints().tcp().tcpNoDelay()),
-        mksub<geometry_msgs::PoseStamped>(
-            nh, "tcp_pose_current", 1, [&](const auto& m) {
-                // Cache the most recent robot TCP pose
-                t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.pose);
+        mksub<ursurg_msgs::ToolEndEffectorStateStamped>(
+            nh, "ee_state_current", 1, [&](const auto& m) {
+                // Cache the most recent end-effector state computed from forward kinematics
+                t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.ee.pose);
+                grasp_current = m.ee.grasper_angle;
                 pose_tcp_frame_id = m.header.frame_id;
-            },
-            ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "grasp_current", 1, [&](const auto& m) {
-                // Cache the most recent opening angle of tool grasper jaws
-                grasp_current = m.position.front();
+                init_current = true;
             },
             ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<geometry_msgs::PoseStamped>(
@@ -113,33 +111,24 @@ int main(int argc, char* argv[])
     auto timer = nh.createSteadyTimer(
         ros::WallDuration(1.0 / nh_priv.param("publish_rate", 125)),
         [&](const ros::SteadyTimerEvent& e) {
-            if (!clutch_engaged)
+            if (!init_current || !clutch_engaged)
                 return;
 
             double grasp_rate = math::pi / 4; // TODO: enable setting grasp rate via service call
             auto dt = e.current_real - e.last_real;
 
-            geometry_msgs::PoseStamped m;
+            if (buttons[0] && !buttons[1]) {
+                grasp_desired -= grasp_rate * dt.toSec();
+            } else if (buttons[1] && !buttons[0]) {
+                grasp_desired += grasp_rate * dt.toSec();
+            }
+
+            ursurg_msgs::ToolEndEffectorState m;
             m.header.stamp = ros::Time::now();
             m.header.frame_id = pose_tcp_frame_id;
             m.pose = convert_to<geometry_msgs::Pose>(t_robotbase_robottcp_desired);
-            pub_pose_desired.publish(m);
-
-            if (buttons[0] && !buttons[1]) {
-                grasp_desired -= grasp_rate * dt.toSec();
-
-                sensor_msgs::JointState m_grasp;
-                m_grasp.header.stamp = m.header.stamp;
-                m_grasp.position.push_back(grasp_desired);
-                pub_grasp_desired.publish(m_grasp);
-            } else if (buttons[1] && !buttons[0]) {
-                grasp_desired += grasp_rate * dt.toSec();
-
-                sensor_msgs::JointState m_grasp;
-                m_grasp.header.stamp = m.header.stamp;
-                m_grasp.position.push_back(grasp_desired);
-                pub_grasp_desired.publish(m_grasp);
-            }
+            m.grasper_angle = grasp_desired;
+            pub_ee_desired.publish(m);
         });
 
     ros::spin();

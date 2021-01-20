@@ -36,8 +36,7 @@
       <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
       <remap from="haptic_buttons" to="/hid/touch/right/button_event" />
       <remap from="clutch_engaged" to="/hid/pedal/right" />
-      <remap from="tcp_pose_desired" to="servo_joint_ik" />
-      <remap from="grasp_desired" to="servo_grasp" />
+      <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
   </group>
 
@@ -70,8 +69,7 @@
       <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
       <remap from="haptic_buttons" to="/hid/touch/left/button_event" />
       <remap from="clutch_engaged" to="/hid/pedal/right" />
-      <remap from="tcp_pose_desired" to="servo_joint_ik" />
-      <remap from="grasp_desired" to="servo_grasp" />
+      <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
   </group>
 
@@ -80,13 +78,11 @@
     <node ns="touch/left" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="left" />
       <param name="prefix" value="touch_left_" />
-      <param name="scheduler_rate" value="500" />
     </node>
 
     <node ns="touch/right" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="right" />
       <param name="prefix" value="touch_right_" />
-      <param name="scheduler_rate" value="500" />
     </node>
 
     <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />

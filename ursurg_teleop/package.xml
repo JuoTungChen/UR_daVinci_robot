@@ -14,4 +14,5 @@
   <depend>ursurg_common</depend>
   <depend>tf2_ros</depend>
   <depend>touch_msgs</depend>
+  <depend>ursurg_msgs</depend>
 </package>

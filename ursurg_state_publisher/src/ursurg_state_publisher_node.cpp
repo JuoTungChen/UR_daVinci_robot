@@ -36,9 +36,11 @@
 #include <ursurg_common/rosutility/subscription.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/JointState.h>
+#include <ursurg_msgs/ToolEndEffectorStateStamped.h>
+
 #include <kdl_parser/kdl_parser.hpp>
 #include <ros/ros.h>
-#include <sensor_msgs/JointState.h>
 #include <tf2_kdl/tf2_kdl.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -61,6 +63,27 @@ std::string slashStripped(const std::string& s)
 
     return s;
 }
+
+// Compute yaw0 joint state and append it to m
+void appendYaw0(const std::string& prefix, sensor_msgs::JointState& m)
+{
+    // Find indices of yaw1 and yaw2 joints
+    std::ptrdiff_t j = -1;
+    std::ptrdiff_t k = -1;
+
+    for (std::ptrdiff_t i = m.name.size() - 1; i >= 0; --i) { // expect yaw1 and yaw2 at end
+        if ((j == -1) && (m.name[i].rfind("yaw1") != std::string::npos))
+            j = i;
+        else if ((k == -1) && (m.name[i].rfind("yaw2") != std::string::npos))
+            k = i;
+    }
+
+    if (j != -1 && k != -1) {
+        // yaw0 angle is between yaw1 and yaw2
+        m.name.push_back(prefix + "yaw0");
+        m.position.push_back((m.position[j] - m.position[k]) / 2);
+    }
+};
 
 struct SegmentData
 {
@@ -170,10 +193,7 @@ public:
         q_current_index_.insert({id + "_tool_yaw1", &q_current_yaw_[0]});
         q_current_index_.insert({id + "_tool_yaw2", &q_current_yaw_[1]});
 
-        grasper_angle_name_ = id + "_tool_grasper_angle";
-
-        pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("/" + id + "/tcp_pose_current", 1);
-        pub_grasp_ = nh_.advertise<sensor_msgs::JointState>("/" + id + "/grasp_current", 1);
+        pub_ = nh_.advertise<ursurg_msgs::ToolEndEffectorStateStamped>("/" + id + "/ee_state_current", 1);
     }
 
     void updateJointPositions(const sensor_msgs::JointState& m)
@@ -191,22 +211,16 @@ public:
             return;
 
         KDL::Frame tf;
-        auto err = fk_solver_.JntToCart(q_current_, tf);
 
-        if (err != KDL::SolverI::E_NOERROR)
+        if (auto err = fk_solver_.JntToCart(q_current_, tf); err != KDL::ChainFkSolverPos_recursive::E_NOERROR)
             throw std::runtime_error("FK failed with error: "s + fk_solver_.strError(err));
 
-        geometry_msgs::PoseStamped m_pose;
-        m_pose.header.stamp = e.current_real;
-        m_pose.header.frame_id = root_;
-        m_pose.pose = convert_to<geometry_msgs::Pose>(tf);
-        pub_pose_.publish(m_pose);
-
-        sensor_msgs::JointState m_grasp;
-        m_grasp.header.stamp = e.current_real;
-        m_grasp.name.push_back(grasper_angle_name_);
-        m_grasp.position.push_back(q_current_yaw_[0] + q_current_yaw_[1]);
-        pub_grasp_.publish(m_grasp);
+        ursurg_msgs::ToolEndEffectorStateStamped m;
+        m.header.stamp = e.current_real;
+        m.header.frame_id = root_;
+        m.ee.pose = convert_to<geometry_msgs::Pose>(tf);
+        m.ee.grasper_angle = q_current_yaw_[0] + q_current_yaw_[1];
+        pub_.publish(m);
     }
 
 private:
@@ -231,9 +245,7 @@ private:
     std::unordered_map<std::string, double*> q_current_index_;
     ros::Time last_update_;
     ros::NodeHandle nh_;
-    ros::Publisher pub_pose_;
-    ros::Publisher pub_grasp_;
-    std::string grasper_angle_name_;
+    ros::Publisher pub_;
 };
 
 int main(int argc, char* argv[])
@@ -264,23 +276,7 @@ int main(int argc, char* argv[])
             }, ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "/a/tool/joint_states", 1, [&](auto m) {
-                // Find indices of yaw1 and yaw2 joints
-                std::ptrdiff_t j = -1;
-                std::ptrdiff_t k = -1;
-
-                for (std::size_t i = 0; i < m.name.size(); ++i) {
-                    if (m.name[i].rfind("yaw1") != std::string::npos)
-                        j = i;
-                    else if (m.name[i].rfind("yaw2") != std::string::npos)
-                        k = i;
-                }
-
-                // Append yaw0 joint configuration between yaw1 and yaw2
-                if (j != -1 && k != -1) {
-                    m.name.push_back("a_tool_yaw0");
-                    m.position.push_back((m.position[j] - m.position[k]) / 2);
-                }
-
+                appendYaw0("a_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_a.updateJointPositions(m);
             }, ros::TransportHints().udp().tcp().tcpNoDelay()),
@@ -291,23 +287,7 @@ int main(int argc, char* argv[])
             }, ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "/b/tool/joint_states", 1, [&](auto m) {
-                // Find indices of yaw1 and yaw2 joints
-                std::ptrdiff_t j = -1;
-                std::ptrdiff_t k = -1;
-
-                for (std::size_t i = 0; i < m.name.size(); ++i) {
-                    if (m.name[i].rfind("yaw1") != std::string::npos)
-                        j = i;
-                    else if (m.name[i].rfind("yaw2") != std::string::npos)
-                        k = i;
-                }
-
-                // Append yaw0 joint configuration between yaw1 and yaw2
-                if (j != -1 && k != -1) {
-                    m.name.push_back("b_tool_yaw0");
-                    m.position.push_back((m.position[j] - m.position[k]) / 2);
-                }
-
+                appendYaw0("b_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_b.updateJointPositions(m);
             }, ros::TransportHints().udp().tcp().tcpNoDelay()),
@@ -317,10 +297,10 @@ int main(int argc, char* argv[])
         nh.createTimer(ros::Duration(1.0 / nh_priv.param("tf_publish_frequency", 50.0)),
                        &RobotStatePublisher::publishTransforms,
                        &robot_state_publisher),
-        nh.createTimer(ros::Duration(1.0 / nh_priv.param("pose_publish_frequency", 125.0)),
+        nh.createTimer(ros::Duration(1.0 / nh_priv.param("ee_publish_frequency", 125.0)),
                        &PoseGraspPublisher::publish,
                        &pose_pub_a),
-        nh.createTimer(ros::Duration(1.0 / nh_priv.param("pose_publish_frequency", 125.0)),
+        nh.createTimer(ros::Duration(1.0 / nh_priv.param("ee_publish_frequency", 125.0)),
                        &PoseGraspPublisher::publish,
                        &pose_pub_b),
     };

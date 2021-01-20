@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
     tf2_ros
     tf2_kdl
     ursurg_common
+    ursurg_msgs
 )
 find_package(urdfdom_headers REQUIRED)
 find_package(orocos_kdl REQUIRED)

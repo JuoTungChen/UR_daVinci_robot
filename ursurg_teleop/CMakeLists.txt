@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   touch_msgs
   ursurg_common
+  ursurg_msgs
 )
 
 find_package(Eigen3 REQUIRED)
