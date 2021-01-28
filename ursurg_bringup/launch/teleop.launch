@@ -13,7 +13,7 @@
       <param name="hostname" value="ur-20185500393" />
       <param name="servo_rate" value="125" />
       <param name="prefix" value="a_ur_" />
-      <remap from="teach_mode_enable" to="/hid/pedal/left" />
+      <remap from="teach_mode_enable" to="/pedal/left" />
     </node>
 
     <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
@@ -38,9 +38,9 @@
       <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_right_" />
-      <remap from="haptic_pose" to="/hid/touch/right/pose_stylus_current" />
-      <remap from="haptic_buttons" to="/hid/touch/right/button_event" />
-      <remap from="clutch_engaged" to="/hid/pedal/right" />
+      <remap from="haptic_pose" to="/touch/right/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/touch/right/button_event" />
+      <remap from="clutch_engaged" to="/pedal/right" />
       <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
   </group>
@@ -51,7 +51,7 @@
       <param name="hostname" value="ur-2017356413" />
       <param name="servo_rate" value="125" />
       <param name="prefix" value="b_ur_" />
-      <remap from="teach_mode_enable" to="/hid/pedal/left" />
+      <remap from="teach_mode_enable" to="/pedal/left" />
     </node>
 
     <node ns="tool" name="eua_control" pkg="eua_control" type="controller" output="screen">
@@ -76,25 +76,25 @@
       <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="b_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
-      <remap from="haptic_pose" to="/hid/touch/left/pose_stylus_current" />
-      <remap from="haptic_buttons" to="/hid/touch/left/button_event" />
-      <remap from="clutch_engaged" to="/hid/pedal/right" />
+      <remap from="haptic_pose" to="/touch/left/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/touch/left/button_event" />
+      <remap from="clutch_engaged" to="/pedal/right" />
       <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
   </group>
 
   <!-- Human input devices -->
-  <group ns="hid">
-    <node ns="touch/left" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
+  <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
+
+  <group ns="touch">
+    <node ns="left" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="left" />
       <param name="prefix" value="touch_left_" />
     </node>
 
-    <node ns="touch/right" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
+    <node ns="right" name="touch_control" pkg="touch_control" type="touch_control" output="screen">
       <param name="device_name" value="right" />
       <param name="prefix" value="touch_right_" />
     </node>
-
-    <node ns="pedal" name="foot_control" pkg="ursurg_teleop" type="foot_control" output="screen" />
   </group>
 </launch>
