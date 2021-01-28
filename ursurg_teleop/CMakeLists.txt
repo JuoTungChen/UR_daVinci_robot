@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(ursurg_teleop)
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
@@ -9,12 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   ursurg_common
   ursurg_msgs
 )
-
 find_package(Eigen3 REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
