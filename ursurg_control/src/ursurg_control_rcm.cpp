@@ -46,10 +46,10 @@ Eigen::Matrix3d tool_rod_orient_desired(const Eigen::Vector3d& p_rod,
     return R;
 }
 
-std::vector<double> tool_config_desired(const Eigen::Matrix3d& r_shaft,
+std::array<double, 4> tool_config_desired(const Eigen::Matrix3d& r_shaft,
                                         const Eigen::Matrix3d& r_tip)
 {
-    std::vector<double> q(4);
+    std::array<double, 4> q{};
 
     Eigen::Matrix3d shaftRtip = r_shaft.inverse() * r_tip;
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 {
     using namespace std::string_literals;
 
-    ros::init(argc, argv, "ursurg_control");
+    ros::init(argc, argv, "ursurg_control_rcm");
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
     const auto joint_limits = [&]() {
         std::unordered_map<std::string, urdf::JointLimits> limits;
 
-        for (auto joint : model.joints_) {
+        for (const auto& joint : model.joints_) {
             auto plim = joint.second->limits;
 
             if (plim)
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
                 // Cache current UR joint angles
                 assert(m.name.size() == m.position.size());
 
-                for (std::size_t i = 0; i < m.position.size(); ++i)
+                for (std::size_t i = 0; i < m.name.size(); ++i)
                     *q_current_by_name.at(m.name[i]) = m.position[i];
 
                 init_ur = true;
@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
                 sensor_msgs::JointState m_tool;
                 m_tool.header.stamp = m_robot.header.stamp;
                 m_tool.name = tool_joint_names;
-                m_tool.position = q_tool;
+                std::copy(q_tool.begin(), q_tool.end(), std::back_inserter(m_tool.position));
 
                 pub_robot_servo_joint.publish(m_robot);
                 pub_tool_servo_joint.publish(m_tool);

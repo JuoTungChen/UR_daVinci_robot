@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
                 appendYaw0(tool_prefix, m);
 
                 // Cache current tool joint angles
-                for (std::size_t i = 0; i < m.position.size(); ++i)
+                for (std::size_t i = 0; i < m.name.size(); ++i)
                     *q_current_by_name.at(m.name[i]) = m.position[i];
 
                 init.tool = true;
