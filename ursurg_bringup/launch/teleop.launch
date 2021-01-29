@@ -5,7 +5,7 @@
 
   <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro a_kinematics_config_file:=$(arg a_kinematics_config) b_kinematics_config_file:=$(arg b_kinematics_config)" />
 
-  <node name="ursurg_state_publisher" pkg="ursurg_state_publisher" type="ursurg_state_publisher" output="screen"> />
+  <node name="ursurg_state_publisher" pkg="ursurg_state_publisher" type="ursurg_state_publisher" output="screen" />
 
   <group ns="a">
     <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
