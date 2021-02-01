@@ -59,6 +59,15 @@
     <origin xyz="0.56961 -0.0012618 0.056071" rpy="0 0 0" /> <!-- From calibration -->
   </joint>
 
+  <!-- Stereo camera -->
+  <link name="stereo_optical" />
+
+  <joint name="world_stereo_optical_fixed" type="fixed">
+    <parent link="world" />
+    <child link="stereo_optical" />
+    <origin xyz="0.2 0 0.1" rpy="${-3*pi/4} 0 ${-pi/2}" />
+  </joint>
+
   <!-- Touch haptic devices -->
   <link name="touch_left_base" />
   <link name="touch_right_base" />
