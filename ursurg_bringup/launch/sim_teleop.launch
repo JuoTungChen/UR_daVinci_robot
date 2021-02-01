@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="a_servo_rate_hz" value="125" />
+  <arg name="b_servo_rate_hz" value="125" />
+
   <arg name="a_kinematics_config" value="$(find ur_e_description)/config/ur5e_default.yaml" />
   <arg name="b_kinematics_config" value="$(find ur_description)/config/ur5_default.yaml" />
 
@@ -11,6 +14,7 @@
     <!-- Arm A: UR5e + EUA2 (X/Xi tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ursim-1" />
+      <param name="servo_rate" value="$(arg a_servo_rate_hz)" />
       <param name="prefix" value="a_ur_" />
     </node>
 
@@ -28,7 +32,7 @@
     </node>
 
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
-      <param name="publish_rate" value="125" />
+      <param name="publish_rate" value="$(arg a_servo_rate_hz)" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_right_" />
       <remap from="haptic_pose" to="/touch/left/pose_stylus_current" />
@@ -42,6 +46,7 @@
     <!-- Arm B: UR5 + EUA1 (S/Si tool) -->
     <node ns="ur" name="ur_control" pkg="ur_control" type="ur_control" output="screen">
       <param name="hostname" value="ursim-2" />
+      <param name="servo_rate" value="$(arg b_servo_rate_hz)" />
       <param name="prefix" value="b_ur_" />
     </node>
 
@@ -59,7 +64,7 @@
     </node>
 
     <node name="teleop" pkg="ursurg_teleop" type="teleop" output="screen">
-      <param name="publish_rate" value="125" />
+      <param name="publish_rate" value="$(arg b_servo_rate_hz)" />
       <param name="ur_prefix" value="b_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
       <remap from="haptic_pose" to="/touch/right/pose_stylus_current" />
