@@ -64,15 +64,15 @@
   <link name="touch_right_base" />
 
   <joint name="world_touch_left_fixed" type="fixed">
-    <parent link="world" />
+    <parent link="stereo_optical" />
     <child link="touch_left_base" />
-    <origin xyz="1 -0.1 0" rpy="${pi/2} 0 ${pi/2}" />
+    <origin xyz="-0.15 0 0" rpy="0 ${pi} ${pi}" />
   </joint>
 
   <joint name="world_touch_right_fixed" type="fixed">
-    <parent link="world" />
+    <parent link="stereo_optical" />
     <child link="touch_right_base" />
-    <origin xyz="1 0.1 0" rpy="${pi/2} 0 ${pi/2}" />
+    <origin xyz="0.15 0 0" rpy="0 ${pi} ${pi}" />
   </joint>
 
   <!-- Robot platform -->
