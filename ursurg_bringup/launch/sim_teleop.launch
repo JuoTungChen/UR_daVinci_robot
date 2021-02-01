@@ -33,8 +33,8 @@
       <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_right_" />
-      <remap from="haptic_pose" to="/touch/right/pose_stylus_current" />
-      <remap from="haptic_buttons" to="/touch/right/button_event" />
+      <remap from="haptic_pose" to="/touch/left/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/touch/left/button_event" />
       <remap from="clutch_engaged" to="/pedal/right" />
       <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
@@ -66,8 +66,8 @@
       <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="b_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
-      <remap from="haptic_pose" to="/touch/left/pose_stylus_current" />
-      <remap from="haptic_buttons" to="/touch/left/button_event" />
+      <remap from="haptic_pose" to="/touch/right/pose_stylus_current" />
+      <remap from="haptic_buttons" to="/touch/right/button_event" />
       <remap from="clutch_engaged" to="/pedal/right" />
       <remap from="ee_state_desired" to="servo_joint_ik" />
     </node>
