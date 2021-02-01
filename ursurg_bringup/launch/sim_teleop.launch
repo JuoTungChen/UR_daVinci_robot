@@ -22,8 +22,6 @@
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
-      <param name="servo_rate" value="125" />
-      <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="tool_prefix" value="a_tool_" />
       <rosparam param="weights_joint_space">[0.33, 0.33, 0.33, 0.33, 0.33, 0.33, 1, 1, 1]</rosparam>
@@ -55,8 +53,6 @@
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
-      <param name="servo_rate" value="125" />
-      <param name="publish_rate" value="125" />
       <param name="ur_prefix" value="b_ur_" />
       <param name="tool_prefix" value="b_tool_" />
       <rosparam param="weights_joint_space">[0.33, 0.33, 0.33, 0.33, 0.33, 0.33, 1, 1, 1]</rosparam>
