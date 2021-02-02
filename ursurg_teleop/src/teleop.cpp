@@ -124,8 +124,6 @@ int main(int argc, char* argv[])
             }
 
             ursurg_msgs::ToolEndEffectorState m;
-            m.header.stamp = ros::Time::now();
-            m.header.frame_id = pose_tcp_frame_id;
             m.pose = convert_to<geometry_msgs::Pose>(t_robotbase_robottcp_desired);
             m.grasper_angle = grasp_desired;
             pub_ee_desired.publish(m);
