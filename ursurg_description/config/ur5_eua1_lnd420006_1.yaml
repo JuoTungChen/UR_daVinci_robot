@@ -1,7 +1,12 @@
 # UR5 + EUA1 + LND 420006 (1)
 
-# Translation from UR robot TCP to tool TCP
-tcp_offset:
-  x: 0.569964734038499
-  y: -0.002947541930864
-  z: 0.052458623281346
+# Transformation from UR robot TCP to surgical tool TCP
+robot_to_tool:
+  xyz:
+    - 0.569964734038499
+    - -0.002947541930864
+    - 0.052458623281346
+  rpy:
+    - 0
+    - 0
+    - 0
