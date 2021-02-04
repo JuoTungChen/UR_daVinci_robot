@@ -5,6 +5,9 @@
 
   <link name="world" />
 
+  <xacro:property name="world_calib_file" value="$(find ursurg_description)/config/world_calib.yaml" />
+  <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file)}" />
+
   <!-- A) UR5e robot -->
   <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
   <xacro:ur5e_robot prefix="a_ur_" joint_limited="true"
@@ -16,10 +19,13 @@
     wrist_3_lower_limit="${-pi}" wrist_3_upper_limit="${pi}"
     kinematics_file="${load_yaml('$(arg a_kinematics_config_file)')}" />
 
+  <xacro:property name="world_to_a_base_link" value="${world_calib_data['world_to_a_base_link']}" />
+
   <joint name="a_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="a_ur_base_link" />
-    <origin xyz="0 0.4 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="${' '.join(str(val) for val in world_to_a_base_link['xyz'])}"
+      rpy="${' '.join(str(val) for val in world_to_a_base_link['rpy'])}" />
   </joint>
 
   <!-- A) LND 470006 tool -->
@@ -31,7 +37,8 @@
   <joint name="a_ur_tool_joint" type="fixed">
     <parent link="a_ur_ee_link" />
     <child link="a_tool_tip_calib" />
-    <origin xyz="${' '.join(str(val) for val in a_robot_to_tool['xyz'])}" rpy="${' '.join(str(val) for val in a_robot_to_tool['rpy'])}" />
+    <origin xyz="${' '.join(str(val) for val in a_robot_to_tool['xyz'])}"
+      rpy="${' '.join(str(val) for val in a_robot_to_tool['rpy'])}" />
   </joint>
 
   <!-- B) UR5 robot -->
@@ -45,10 +52,13 @@
     wrist_3_lower_limit="${-pi}" wrist_3_upper_limit="${pi}"
     kinematics_file="${load_yaml('$(arg b_kinematics_config_file)')}" />
 
+  <xacro:property name="world_to_b_base_link" value="${world_calib_data['world_to_b_base_link']}" />
+
   <joint name="b_world_ur_base_joint" type="fixed">
     <parent link="world" />
     <child link="b_ur_base_link" />
-    <origin xyz="0 -0.4 0" rpy="0 0 ${pi/2}" />
+    <origin xyz="${' '.join(str(val) for val in world_to_b_base_link['xyz'])}"
+      rpy="${' '.join(str(val) for val in world_to_b_base_link['rpy'])}" />
   </joint>
 
   <!-- B) LND 420006 tool -->
@@ -60,16 +70,19 @@
   <joint name="b_eua2_tool_joint" type="fixed">
     <parent link="b_ur_ee_link" />
     <child link="b_tool_tip_calib" />
-    <origin xyz="${' '.join(str(val) for val in b_robot_to_tool['xyz'])}" rpy="${' '.join(str(val) for val in b_robot_to_tool['rpy'])}" />
+    <origin xyz="${' '.join(str(val) for val in b_robot_to_tool['xyz'])}"
+      rpy="${' '.join(str(val) for val in b_robot_to_tool['rpy'])}" />
   </joint>
 
   <!-- Stereo camera -->
   <link name="stereo_optical" />
+  <xacro:property name="world_to_stereo_optical" value="${world_calib_data['world_to_stereo_optical']}" />
 
   <joint name="world_stereo_optical_fixed" type="fixed">
     <parent link="world" />
     <child link="stereo_optical" />
-    <origin xyz="0.2 0 0.1" rpy="${-3*pi/4} 0 ${-pi/2}" />
+    <origin xyz="${' '.join(str(val) for val in world_to_stereo_optical['xyz'])}"
+      rpy="${' '.join(str(val) for val in world_to_stereo_optical['rpy'])}" />
   </joint>
 
   <!-- Touch haptic devices -->
