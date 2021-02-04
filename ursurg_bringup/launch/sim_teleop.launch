@@ -5,8 +5,17 @@
 
   <arg name="a_kinematics_config" value="$(find ur_e_description)/config/ur5e_default.yaml" />
   <arg name="b_kinematics_config" value="$(find ur_description)/config/ur5_default.yaml" />
+  <arg name="a_tool_calib" value="$(find ursurg_description)/config/ur5e_eua2_lnd470006_1.yaml" />
+  <arg name="b_tool_calib" value="$(find ursurg_description)/config/ur5_eua1_lnd420006_1.yaml" />
 
-  <param name="robot_description" command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro a_kinematics_config_file:=$(arg a_kinematics_config) b_kinematics_config_file:=$(arg b_kinematics_config)" />
+
+
+  <param name="robot_description"
+    command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro
+             a_kinematics_config_file:=$(arg a_kinematics_config)
+             b_kinematics_config_file:=$(arg b_kinematics_config)
+             a_tool_calib_file:=$(arg a_tool_calib)
+             b_tool_calib_file:=$(arg b_tool_calib)" />
 
   <node name="ursurg_state_publisher" pkg="ursurg_state_publisher" type="ursurg_state_publisher" output="screen" />
 

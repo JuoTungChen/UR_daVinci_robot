@@ -1,0 +1,7 @@
+# UR5e + EUA2 + LND 470006 (1)
+
+# Translation from UR robot TCP to tool TCP
+tcp_offset:
+  x: 0.638495987385151
+  y: 0.001032832343903
+  z: 0.037916082534276
