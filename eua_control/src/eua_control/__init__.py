@@ -356,7 +356,7 @@ class EUACalibrator(object):
         while self.c.trajectory is not None:
             rospy.sleep(0.1)
 
-        rospy.sleep(0.5)
+        rospy.sleep(0.75)
 
     def run(self):
         try:
