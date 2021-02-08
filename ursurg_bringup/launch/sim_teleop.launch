@@ -44,6 +44,7 @@
       <param name="publish_rate" value="$(arg a_servo_rate_hz)" />
       <param name="ur_prefix" value="a_ur_" />
       <param name="haptic_prefix" value="touch_right_" />
+      <param name="grasp_rate" value="1.5708" />
       <remap from="haptic_pose" to="/touch/left/pose_stylus_current" />
       <remap from="haptic_buttons" to="/touch/left/button_event" />
       <remap from="clutch_engaged" to="/pedal/right" />
@@ -76,6 +77,7 @@
       <param name="publish_rate" value="$(arg b_servo_rate_hz)" />
       <param name="ur_prefix" value="b_ur_" />
       <param name="haptic_prefix" value="touch_left_" />
+      <param name="grasp_rate" value="1.5708" />
       <remap from="haptic_pose" to="/touch/right/pose_stylus_current" />
       <remap from="haptic_buttons" to="/touch/right/button_event" />
       <remap from="clutch_engaged" to="/pedal/right" />
