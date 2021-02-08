@@ -3,9 +3,9 @@
 # Transformation from UR robot TCP to surgical tool TCP
 robot_to_tool:
   xyz:
-    - 0.638495987385151
-    - 0.001032832343903
-    - 0.037916082534276
+    - 0.637763390801171
+    - -0.001032485414036
+    - 0.043323823884772
   rpy:
     - 0
     - 0
