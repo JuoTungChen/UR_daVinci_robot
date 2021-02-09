@@ -37,34 +37,10 @@ namespace math {
 
 // Import boost::math constants into namespace
 using boost::math::double_constants::pi;
+using boost::math::double_constants::third_pi;
 using boost::math::double_constants::half_pi;
 using boost::math::double_constants::two_pi;
 using boost::math::double_constants::pi_sqr;
-
-/*!
- * \brief Clamp the value \p x to the interval [lo,hi]
- *
- * \param x the input value.
- * \param lo the minimum value to return.
- * \param hi the maximum value to return.
- * \param cmp comparison function object.
- * \return The clamped value.
- */
-template<typename T, class Compare>
-inline constexpr const T& clamped(const T& x, const T& lo, const T& hi, Compare cmp)
-{
-    assert(!cmp(hi, lo));
-    return cmp(x, lo) ? lo : cmp(hi, x) ? hi : x;
-}
-
-/*!
- * \overload
- */
-template<typename T>
-inline constexpr const T& clamped(const T& x, const T& lo, const T& hi)
-{
-    return clamped(x, lo, hi, std::less<>());
-}
 
 /**
  * \brief Linear value mapping (feature scaling) to the range [a,b].
@@ -77,7 +53,7 @@ inline constexpr const T& clamped(const T& x, const T& lo, const T& hi)
  * \return The mapped value.
  */
 template<typename T>
-inline constexpr const T& map_linear(const T& x, const T& xmin, const T& xmax, const T& a, const T& b)
+inline constexpr T map_linear(const T& x, const T& xmin, const T& xmax, const T& a, const T& b)
 {
     return a + (x - xmin) * (b - a) / (xmax - xmin);
 }
