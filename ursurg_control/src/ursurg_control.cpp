@@ -15,13 +15,21 @@
 
 #include <ros/ros.h>
 
+#include <range/v3/action/push_back.hpp>
+#include <range/v3/algorithm/copy.hpp>
+#include <range/v3/view/enumerate.hpp>
+#include <range/v3/view/span.hpp>
+#include <range/v3/view/zip.hpp>
+
+#include <optional>
+
 struct Init
 {
     bool ur;
     bool tool;
 };
 
-void appendYaw0(const std::string& prefix, sensor_msgs::JointState& m)
+void append_yaw0(const std::string& prefix, sensor_msgs::JointState& m)
 {
     // Find indices of yaw1 and yaw2 joints
     std::ptrdiff_t j = -1;
@@ -59,10 +67,10 @@ int main(int argc, char* argv[])
     if (!kdl_parser::treeFromUrdfModel(model, tree))
         throw std::runtime_error("Failed to extract KDL tree from robot description");
 
-    auto ur_prefix = nh_priv.param("ur_prefix", ""s);
-    auto tool_prefix = nh_priv.param("tool_prefix", ""s);
+    const auto ur_prefix = nh_priv.param("ur_prefix", ""s);
+    const auto tool_prefix = nh_priv.param("tool_prefix", ""s);
     // TODO: std::vector<std::string> ur_joint_names;
-    auto tool_joint_names = [&]() {
+    const auto tool_joint_names = [&]() {
         std::vector<std::string> names;
 
         for (const auto& name : {"roll", "pitch", "yaw1", "yaw2"})
@@ -71,8 +79,8 @@ int main(int argc, char* argv[])
         return names;
     }();
 
-    auto chain_root = ur_prefix + "base_link";
-    auto chain_tip = tool_prefix + "tcp0";
+    const auto chain_root = ur_prefix + "base_link";
+    const auto chain_tip = tool_prefix + "tcp0";
     KDL::Chain chain;
 
     if (!tree.getChain(chain_root, chain_tip, chain))
@@ -90,7 +98,7 @@ int main(int argc, char* argv[])
     }();
 
     // Vector of pointers to the movable joints in the kinematic chain
-    auto movable_joints = [&]() {
+    const auto movable_joints = [&]() {
         std::vector<const KDL::Joint*> segments;
 
         for (const auto& seg : chain.segments)
@@ -101,15 +109,13 @@ int main(int argc, char* argv[])
     }();
 
     // Chain joint (movable joints) limits for input to IK solver
-    auto [q_min, q_max] = [&]() {
+    const auto [q_min, q_max] = [&]() {
         KDL::JntArray lower(chain.getNrOfJoints());
         KDL::JntArray upper(chain.getNrOfJoints());
-        unsigned i = 0;
 
-        for (const auto& joint : movable_joints) {
+        for (const auto& [i, joint] : movable_joints | ranges::views::enumerate) {
             lower(i) = joint_limits.at(joint->getName()).lower;
             upper(i) = joint_limits.at(joint->getName()).upper;
-            ++i;
         }
 
         return std::make_tuple(lower, upper);
@@ -122,12 +128,12 @@ int main(int argc, char* argv[])
     KDL::ChainIkSolverVel_wdls ik_solver_vel(chain);
     auto weights_vector_js = nh_priv.param("weights_joint_space", std::vector<double>(chain.getNrOfJoints(), 1.0));
     Eigen::MatrixXd Mq = Eigen::VectorXd::Map(weights_vector_js.data(), weights_vector_js.size()).asDiagonal();
-    auto retval = ik_solver_vel.setWeightJS(Mq);
 
-    if (retval != KDL::ChainIkSolverVel_wdls::E_NOERROR)
+
+    if (auto err = ik_solver_vel.setWeightJS(Mq); err != KDL::ChainIkSolverVel_wdls::E_NOERROR)
         ROS_ERROR_STREAM("Setting IK solver joint space weighting matrix failed: "
-                         << ik_solver_vel.strError(retval)
-                         << "\n" << "Mq = \n" << Mq);
+                         << ik_solver_vel.strError(err)
+                         << "\n" << "Mq =\n" << Mq);
 
     // Inverse position kinematics
     KDL::ChainIkSolverPos_NR_JL ik_solver_pos(chain,
@@ -151,7 +157,7 @@ int main(int argc, char* argv[])
         std::unordered_map<std::string, double*> dict;
         unsigned i = 0;
 
-        for (auto joint : movable_joints)
+        for (const auto& joint : movable_joints)
             dict.insert({joint->getName(), &q_current(i++)});
 
         // Also map grasper joint states (yaw1, yaw2) that are not part of 'chain'
@@ -166,97 +172,91 @@ int main(int argc, char* argv[])
     auto pub_tool_move_joint = nh.advertise<sensor_msgs::JointState>("tool/move_joint", 1);
     auto pub_tool_servo_joint = nh.advertise<sensor_msgs::JointState>("tool/servo_joint", 1);
 
-    // Solve for two tool yaw joint angles
-    auto solve_ik_yaw = [&](double tcp0, double grasp_desired) {
-        std::array<double, 2> q_yaw{
-            tcp0 + grasp_desired / 2,
-            -tcp0 + grasp_desired / 2,
-        };
+    // Get IK solution as joint states to push to robot and tool drivers, respectively
+    auto get_ik_solution = [&](const auto& pose_desired, double grasp_desired)
+            -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
+        // If q_current and q_desired (the previous IK solution) are close,
+        // we use q_desired as the seed for the IK algorithm
+        const auto& q_init = ((q_desired.data - q_current.data).norm() > math::pi / 4) ? q_current : q_desired;
 
-        // Enforce joint limits
-        auto limitx = [](auto& x, const auto& limits) {
-            if (x > limits.upper)
-                x = limits.upper;
+        // Find configuration of joints in 'chain'
+        if (auto err = ik_solver_pos.CartToJnt(q_init, pose_desired, q_desired);
+                err != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
+            ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(err));
+            return {};
+        }
 
-            if (x < limits.lower)
-                x = limits.lower;
-        };
+        // yaw1, yaw2 configuration given a desired grasper opening angle
+        double q_yaw1 = q_desired(8) + grasp_desired / 2;
+        double q_yaw2 = -q_desired(8) + grasp_desired / 2;
 
-        limitx(q_yaw[0], joint_limits.at(tool_joint_names[2]));
-        limitx(q_yaw[1], joint_limits.at(tool_joint_names[3]));
+        // Enforce joint limits for yaw1, yaw2
+        const auto& lim_yaw1 = joint_limits.at(tool_joint_names[2]);
+        q_yaw1 = std::clamp(q_yaw1, lim_yaw1.lower, lim_yaw1.upper);
+        const auto& lim_yaw2 = joint_limits.at(tool_joint_names[3]);
+        q_yaw2 = std::clamp(q_yaw2, lim_yaw2.lower, lim_yaw2.upper);
 
-        return q_yaw;
-    };
-
-    auto q_to_msgs = [&](const auto& q_chain, const auto& q_yaw) {
         // The first 6 elements of the solution vector is the robot configuration
         sensor_msgs::JointState m_robot;
         m_robot.header.stamp = ros::Time::now();
         // FIXME joint names
-        std::copy(q_chain.data.data(), std::next(q_chain.data.data(), 6), std::back_inserter(m_robot.position));
+        m_robot.position |= ranges::actions::push_back(ranges::span{q_desired.data.data(), 6});
 
         // and the last 4 is the tool configuration
         sensor_msgs::JointState m_tool;
         m_tool.header.stamp = m_robot.header.stamp;
         m_tool.name = tool_joint_names;
-        m_tool.position.push_back(q_chain(6)); // roll
-        m_tool.position.push_back(q_chain(7)); // pitch (wrist)
-        m_tool.position.push_back(q_yaw[0]);   // yaw1 (jaw1)
-        m_tool.position.push_back(q_yaw[1]);   // yaw2 (jaw2)
+        m_tool.position.push_back(q_desired(6)); // roll
+        m_tool.position.push_back(q_desired(7)); // pitch (wrist)
+        m_tool.position.push_back(q_yaw1);       // yaw1 (jaw1)
+        m_tool.position.push_back(q_yaw2);       // yaw2 (jaw2)
 
-        return std::make_tuple(m_robot, m_tool);
+        return std::make_pair(m_robot, m_tool);
     };
 
     std::list<ros::Subscriber> subscribers{
         mksub<sensor_msgs::JointState>(
             nh, "ur/joint_states", 1, [&](const auto& m) {
                 // Cache current UR joint angles
-                for (std::size_t i = 0; i < m.position.size(); ++i)
-                    *q_current_by_name.at(m.name[i]) = m.position[i];
+                for (auto [n, q] : ranges::views::zip(m.name, m.position))
+                    *q_current_by_name[n] = q;
 
                 init.ur = true;
-            },
-            ros::TransportHints().udp().tcp().tcpNoDelay()),
+            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<sensor_msgs::JointState>(
             nh, "tool/joint_states", 1, [&](auto m) {
-                appendYaw0(tool_prefix, m);
+                append_yaw0(tool_prefix, m);
 
                 // Cache current tool joint angles
-                for (std::size_t i = 0; i < m.name.size(); ++i)
-                    *q_current_by_name.at(m.name[i]) = m.position[i];
+                for (auto [n, q] : ranges::views::zip(m.name, m.position))
+                    *q_current_by_name[n] = q;
 
                 init.tool = true;
-            },
-            ros::TransportHints().udp().tcp().tcpNoDelay()),
+            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
         mksub<ursurg_msgs::ToolEndEffectorState>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
                 if (!init.ur || !init.tool)
                     return;
 
-                // Desired manipulator state (target for IK solution)
-                auto pose_desired = convert_to<KDL::Frame>(m.pose);
-                auto grasp_desired = m.grasper_angle;
+                auto sol = get_ik_solution(convert_to<KDL::Frame>(m.pose), m.grasper_angle);
 
-                // If q_current and q_desired (the previous IK solution) are close,
-                // we use q_desired as the seed for the IK algorithm
-                const auto& q_init = ((q_desired.data - q_current.data).norm() > math::half_pi) ? q_current : q_desired;
-
-                // Find configuration of joints in 'chain'
-                if (auto err = ik_solver_pos.CartToJnt(q_init, pose_desired, q_desired);
-                    err != KDL::ChainIkSolverVel_wdls::E_NOERROR) {
-                    ROS_WARN_STREAM("IK error: " << ik_solver_pos.strError(err));
-                    return;
+                if (sol) {
+                    pub_robot_servo_joint.publish(sol->first);
+                    pub_tool_servo_joint.publish(sol->second);
                 }
+            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
+        mksub<ursurg_msgs::ToolEndEffectorStateStamped>(
+            nh, "move_joint_ik", 1, [&](const auto& m) {
+                if (!init.ur || !init.tool)
+                    return;
 
-                // Find joint configuration for yaw1, yaw2
-                auto q_yaw = solve_ik_yaw(q_desired(8), grasp_desired);
+                auto sol = get_ik_solution(convert_to<KDL::Frame>(m.ee.pose), m.ee.grasper_angle);
 
-                auto [m_robot, m_tool] = q_to_msgs(q_desired, q_yaw);
-                pub_robot_servo_joint.publish(m_robot);
-                pub_tool_servo_joint.publish(m_tool);
-
-            },
-            ros::TransportHints().udp().tcp().tcpNoDelay()),
+                if (sol) {
+                    pub_robot_move_joint.publish(sol->first);
+                    pub_tool_move_joint.publish(sol->second);
+                }
+            }, ros::TransportHints().tcp().tcpNoDelay()),
     };
 
     ros::spin();
