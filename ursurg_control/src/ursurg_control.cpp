@@ -49,6 +49,27 @@ void append_yaw0(const std::string& prefix, sensor_msgs::JointState& m)
     }
 };
 
+auto split_joint_state(const sensor_msgs::JointState& m)
+{
+    sensor_msgs::JointState m_ur;
+    sensor_msgs::JointState m_tool;
+
+    m_ur.header.stamp = m.header.stamp;
+    m_tool.header.stamp = m.header.stamp;
+
+    for (auto [n, q] : ranges::views::zip(m.name, m.position)) {
+        if (n.find("ur") != std::string::npos) {
+            m_ur.name.push_back(n);
+            m_ur.position.push_back(q);
+        } else if (n.find("tool") != std::string::npos) {
+            m_tool.name.push_back(n);
+            m_tool.position.push_back(q);
+        }
+    }
+
+    return std::make_pair(m_ur, m_tool);
+}
+
 int main(int argc, char* argv[])
 {
     using namespace std::string_literals;
@@ -233,6 +254,26 @@ int main(int argc, char* argv[])
 
                 init.tool = true;
             }, ros::TransportHints().udp().tcp().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "servo_joint", 1, [&](const auto& m) {
+                auto [m_ur, m_tool] = split_joint_state(m);
+
+                if (!m_ur.name.empty())
+                    pub_robot_servo_joint.publish(m_ur);
+
+                if (!m_tool.name.empty())
+                    pub_tool_servo_joint.publish(m_tool);
+            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
+        mksub<sensor_msgs::JointState>(
+            nh, "move_joint", 1, [&](const auto& m) {
+                auto [m_ur, m_tool] = split_joint_state(m);
+
+                if (!m_ur.name.empty())
+                    pub_robot_move_joint.publish(m_ur);
+
+                if (!m_tool.name.empty())
+                    pub_tool_move_joint.publish(m_tool);
+            }, ros::TransportHints().tcp().tcpNoDelay()),
         mksub<ursurg_msgs::ToolEndEffectorState>(
             nh, "servo_joint_ik", 1, [&](const auto& m) {
                 if (!init.ur || !init.tool)
