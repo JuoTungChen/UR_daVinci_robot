@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
             -> std::optional<std::pair<sensor_msgs::JointState, sensor_msgs::JointState>> {
         // If q_current and q_desired (the previous IK solution) are close,
         // we use q_desired as the seed for the IK algorithm
-        const auto& q_init = ((q_desired.data - q_current.data).norm() > math::pi / 4) ? q_current : q_desired;
+        auto q_init = ((q_desired.data - q_current.data).norm() > math::pi / 8) ? q_current : q_desired;
 
         // Find configuration of joints in 'chain'
         if (auto err = ik_solver_pos.CartToJnt(q_init, pose_desired, q_desired);
