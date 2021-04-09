@@ -1,12 +1,12 @@
-# UR5e + EUA2 + LND 470006 (1)
+# UR5e + EUA-Xi (v2) + LND 470006 (1)
 
 # Transformation from UR robot TCP to surgical tool TCP
 robot_to_tool:
   xyz:
-    - 0.640127684087086
-    - -0.001575142228060
-    - 0.037271103691783
+    - 0.09
+    - 0
+    - 0.62
   rpy:
     - 0
-    - 0
+    - -1.57079632679
     - 0
