@@ -1,0 +1,78 @@
+<launch>
+  <arg name="manager" value="/vision_nodelet_manager" /> <!-- Must be globally qualified -->
+  <arg name="respawn" value="false" />
+
+  <arg     if="$(arg respawn)" name="bond" value="" />
+  <arg unless="$(arg respawn)" name="bond" value="--no-bond" />
+
+  <!-- Nodelet manager for the vision pipeline -->
+  <node pkg="nodelet" type="nodelet" name="vision_nodelet_manager" args="manager" output="screen" />
+
+  <group ns="stereo">
+    <group ns="left">
+      <!-- Frame grabber -->
+      <node name="frame_grabber" pkg="nodelet" type="nodelet"
+          args="load pylon_frame_grabber/FrameGrabberNodelet $(arg manager) $(arg bond)"
+          respawn="$(arg respawn)" output="screen">
+        <param name="serial" value="40017974" />
+      </node>
+
+      <!-- Basic frame processing: debayer, rectify (monochrome, color) -->
+      <include file="$(find image_proc)/launch/image_proc.launch">
+        <arg name="manager" value="$(arg manager)" />
+        <arg name="respawn" value="$(arg respawn)" />
+      </include>
+
+      <node name="overlay" pkg="nodelet" type="nodelet"
+          args="load ursurg_vision_tools/ImageOverlayNodelet $(arg manager) $(arg bond)"
+          respawn="$(arg respawn)" output="screen">
+        <rosparam>
+          subscriptions:
+            - /tracking/aruco_markers
+          tf_frames:
+            - a_tool_tcp0
+            - b_tool_tcp0
+        </rosparam>
+      </node>
+    </group>
+
+    <group ns="right">
+      <!-- Frame grabber -->
+      <node  name="frame_grabber" pkg="nodelet" type="nodelet"
+          args="load pylon_frame_grabber/FrameGrabberNodelet $(arg manager) $(arg bond)"
+          respawn="$(arg respawn)" output="screen">
+        <param name="serial" value="40015008" />
+      </node>
+
+      <!-- Basic frame processing: debayer, rectify (monochrome, color) -->
+      <include file="$(find image_proc)/launch/image_proc.launch">
+        <arg name="manager" value="$(arg manager)" />
+        <arg name="respawn" value="$(arg respawn)" />
+      </include>
+
+      <node name="overlay" pkg="nodelet" type="nodelet"
+          args="load ursurg_vision_tools/ImageOverlayNodelet $(arg manager) $(arg bond)"
+          respawn="$(arg respawn)" output="screen">
+        <rosparam>
+          subscriptions:
+            - /tracking/aruco_markers
+          tf_frames:
+            - a_tool_tcp0
+            - b_tool_tcp0
+        </rosparam>
+      </node>
+    </group>
+
+    <node name="aruco_tracker" pkg="nodelet" type="nodelet"
+        args="load artag_tracking/ArucoTrackerNodelet $(arg manager) $(arg bond)"
+        respawn="$(arg respawn)" output="screen">
+      <param name="dictionary" value="DICT_5X5_50" />
+      <param name="marker_side_length" value="0.02" />
+      <param name="cornerRefinementMethod" value="1" />
+      <param name="cornerRefinementWinSize" value="5" />
+      <remap from="markers" to="/tracking/aruco_markers" />
+    </node>
+
+  </group>
+
+</launch>
