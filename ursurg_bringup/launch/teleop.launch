@@ -35,7 +35,7 @@
       <param name="port" value="/dev/ftdi_FT4TFQFO" />
       <param name="baud_rate" value="2000000" />
       <rosparam param="joint_device_mapping">{"roll": 23, "pitch": 21, "yaw1": 22, "yaw2": 20}</rosparam>
-      <rosparam param="homing_load_thresholds">[0.11, 0.11, 0.09, 0.09]</rosparam>
+      <rosparam param="homing_load_thresholds">[0.13, 0.18, 0.13, 0.13]</rosparam>
     </node>
 
     <node name="ursurg_control" pkg="ursurg_control" type="ursurg_control" output="screen">
