@@ -34,7 +34,7 @@
       <param name="type" value="2" />
       <param name="port" value="/dev/ftdi_FT4TFQFO" />
       <param name="baud_rate" value="2000000" />
-      <rosparam param="joint_device_mapping">{"roll": 13, "pitch": 10, "yaw1": 12, "yaw2": 11}</rosparam>
+      <rosparam param="joint_device_mapping">{"roll": 23, "pitch": 21, "yaw1": 22, "yaw2": 20}</rosparam>
       <rosparam param="homing_load_thresholds">[0.11, 0.11, 0.09, 0.09]</rosparam>
     </node>
 
