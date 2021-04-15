@@ -255,7 +255,7 @@ class MX28(Device):
         ParamByte(26, 'd_gain', range_raw=(0, 254)),  # FIXME: conversion functions
         ParamByte(27, 'i_gain', range_raw=(0, 254)),
         ParamByte(28, 'p_gain', range_raw=(0, 254)),
-        ParamWord(30, 'goal_position', range_raw=(0, 65535), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, to_device=lambda x: tc_int2bin(int(round(x/MX28_2.angle_unit)), 16)),
+        ParamWord(30, 'goal_position', range_raw=(0, 65535), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, to_device=lambda x: tc_int2bin(int(round(x/MX28.angle_unit)), 16)),
         ParamWord(32, 'moving_speed', range_raw=(0, 2047), to_human=lambda x: rpm2radsec(dir2signed(x)*MX28.rpm_per_tick), to_device=lambda x: signed2dir(int(round(radsec2rpm(x/MX28.rpm_per_tick))))),
         ParamWord(34, 'torque_limit', range_raw=(0, 1023), to_human=lambda x: x/1023, to_device=lambda x: int(round(x*1023))),
         ParamWord(36, 'present_position', range_raw=(0, 65535), to_human=lambda x: tc_bin2int(x, 16)*MX28.angle_unit, readonly=True),
@@ -279,86 +279,8 @@ class MX28(Device):
         self.id = ident
 
 
-class MX28_2(Device):
-    """
-    MX-28T/R/AT/AR with protocol 2.0 control table
-
-    http://emanual.robotis.com/docs/en/dxl/mx/mx-28-2
-    """
-    type_name = 'MX-28(2.0)'
-    encoder_ticks = 4096
-    angle_range = (0, 2*math.pi)
-    angle_unit = (angle_range[1] - angle_range[0]) / (encoder_ticks - 1)
-    vel_per_val = 0.229  # rev/min, approximate value
-    acc_per_val = 214.577  # rev/min^2
-
-    # List of control table parameters and corresponding unit conversions
-    params = [
-        # EEPROM
-        ParamWord(0, 'model_number', readonly=True),
-        ParamDoubleWord(2, 'model_information', readonly=True),
-        ParamByte(6, 'firmware_version', readonly=True),
-        ParamByte(7, 'id', range_raw=(0, 252)),
-        ParamByte(8, 'baud_rate', range_raw=(0, 7), to_human=lambda x: baud_map[x], to_device=lambda x: baud_map[x]),
-        ParamByte(9, 'return_delay_time', range_raw=(0, 254), to_human=lambda x: x*2, to_device=lambda x: int(round(x/2))),
-        ParamByte(10, 'drive_mode'),
-        ParamByte(11, 'operating_mode', values_raw=(1, 3, 4, 16)),
-        ParamByte(12, 'secondary_id'),
-        ParamByte(13, 'protocol_type', values_raw=(1, 2)),
-        ParamDoubleWord(20, 'homing_offset', range_raw=(-1044479, 1044479), to_human=lambda x: tc_bin2int(x, 32)*MX28_2.angle_unit, to_device=lambda x: tc_int2bin(int(round(x/MX28_2.angle_unit)), 32)),
-        ParamDoubleWord(24, 'moving_threshold', range_raw=(0, 1023)),
-        ParamByte(31, 'temparature_limit', range_raw=(0, 80)),
-        ParamWord(32, 'min_voltage_limit', range_raw=(95, 160), to_human=lambda x: x/10, to_device=lambda x: int(round(x*10))),
-        ParamWord(34, 'max_voltage_limit', range_raw=(95, 160), to_human=lambda x: x/10, to_device=lambda x: int(round(x*10))),
-        ParamWord(36, 'pwm_limit', range_raw=(0, 885), to_human=lambda x: x/885*100, to_device=lambda x: x*885/100),
-        ParamDoubleWord(40, 'acceleration_limit', range_raw=(0, 32767), to_human=lambda x: rpmsq2radsecsq(x*MX28_2.acc_per_val), to_device=lambda x: int(round(radsecsq2rpmsq(x/MX28_2.acc_per_val)))),
-        ParamDoubleWord(44, 'velocity_limit', range_raw=(0, 1023), to_human=lambda x: rpm2radsec(x*MX28_2.vel_per_val), to_device=lambda x: int(round(radsec2rpm(x/MX28_2.vel_per_val)))),
-        ParamDoubleWord(48, 'max_position_limit', range_raw=(0, encoder_ticks-1), to_human=lambda x: x*MX28_2.angle_unit, to_device=lambda x: int(round(x/MX28_2.angle_unit))),
-        ParamDoubleWord(52, 'min_position_limit', range_raw=(0, encoder_ticks-1), to_human=lambda x: x*MX28_2.angle_unit, to_device=lambda x: int(round(x/MX28_2.angle_unit))),
-        ParamByte(63, 'shutdown'),
-        # RAM
-        ParamByte(64, 'torque_enable', values_raw=(0, 1), to_human=lambda x: bool(x), to_device=lambda x: int(x)),
-        ParamByte(65, 'led', values_raw=(0, 1), to_human=lambda x: bool(x), to_device=lambda x: int(x)),
-        ParamByte(68, 'status_return_level', values_raw=(0, 1, 2)),
-        ParamByte(69, 'registered_instruction', to_human=lambda x: bool(x), readonly=True),
-        ParamByte(70, 'hardware_error_status', readonly=True),
-        ParamWord(76, 'velocity_i_gain'),  # TODO
-        ParamWord(78, 'velocity_p_gain'),  # TODO
-        ParamWord(80, 'position_d_gain'),  # TODO
-        ParamWord(82, 'position_i_gain'),  # TODO
-        ParamWord(84, 'position_p_gain'),  # TODO
-        ParamWord(88, 'feedforward_2nd_gain'),  # TODO
-        ParamWord(90, 'feedforward_1st_gain'),  # TODO
-        ParamByte(98, 'bus_watchdog'),
-        ParamWord(100, 'goal_pwm', range_raw=(0, 885), to_human=lambda x: x/885*100, to_device=lambda x: x*885/100),
-        ParamDoubleWord(104, 'goal_velocity', range_raw=(-1023, 1023), to_human=lambda x: rpm2radsec(tc_bin2int(x, 32)*MX28_2.vel_per_val), to_device=lambda x: int(round(radsec2rpm(tc_int2bin(x, 32)/MX28_2.vel_per_val)))),
-        ParamDoubleWord(108, 'profile_acceleration', range_raw=(0, 32767), to_human=lambda x: rpmsq2radsecsq(x*MX28_2.acc_per_val), to_device=lambda x: int(round(radsecsq2rpmsq(x/MX28_2.acc_per_val)))),
-        ParamDoubleWord(112, 'profile_velocity', to_human=lambda x: rpm2radsec(x*MX28_2.vel_per_val), to_device=lambda x: int(round(radsec2rpm(x/MX28_2.vel_per_val)))),  # TODO support time-based profile
-        ParamDoubleWord(116, 'goal_position', range_raw=(0, encoder_ticks-1), to_human=lambda x: x*MX28_2.angle_unit, to_device=lambda x: int(round(x/MX28_2.angle_unit))),  # TODO support wheel/extended control modes
-        ParamWord(120, 'realtime_tick', readonly=True),
-        ParamByte(122, 'moving', to_human=lambda x: bool(x), readonly=True),
-        ParamByte(123, 'moving_status', readonly=True),
-        ParamWord(124, 'present_pwm', readonly=True),
-        ParamWord(126, 'present_load', to_human=lambda x: tc_bin2int(x, 16)/100, readonly=True),
-        ParamDoubleWord(128, 'present_velocity', to_human=lambda x: rpm2radsec(tc_bin2int(x, 32)*MX28_2.vel_per_val), readonly=True),
-        ParamDoubleWord(132, 'present_position', to_human=lambda x: x*MX28_2.angle_unit, readonly=True),
-        ParamDoubleWord(136, 'velocity_trajectory', readonly=True),  # TODO
-        ParamDoubleWord(140, 'position_trajectory', readonly=True),  # TODO
-        ParamWord(144, 'present_input_voltage', to_human=lambda x: x/10, readonly=True),
-        ParamWord(146, 'present_temperature', readonly=True),
-    ]
-
-    # Control table indexing parameters by name
-    cc = {p.name: p for p in params}
-
-    def __init__(self, io, ident):
-        super(MX28_2, self).__init__(io)
-        self.id = ident
-
-
 # Map model numbers to device types
 device_models = {
     12: AX12,
     29: MX28,
-    30: MX28_2,
 }
