@@ -9,6 +9,8 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 )
 
+catkin_python_setup()
+
 catkin_package(
   DEPENDS Boost
   INCLUDE_DIRS include
