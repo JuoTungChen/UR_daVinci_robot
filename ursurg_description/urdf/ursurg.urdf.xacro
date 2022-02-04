@@ -30,7 +30,7 @@
   <xacro:property name="a_robot_to_tool" value="${a_tool_calib_data['robot_to_tool']}" />
 
   <joint name="a_ur_tool_joint" type="fixed">
-    <parent link="a_ur_ee_link" />
+    <parent link="a_ur_flange" />
     <child link="a_tool_tip_calib" />
     <origin xyz="${' '.join(str(val) for val in a_robot_to_tool['xyz'])}"
       rpy="${' '.join(str(val) for val in a_robot_to_tool['rpy'])}" />
@@ -58,7 +58,7 @@
   <xacro:property name="b_robot_to_tool" value="${b_tool_calib_data['robot_to_tool']}" />
 
   <joint name="b_eua2_tool_joint" type="fixed">
-    <parent link="b_ur_ee_link" />
+    <parent link="b_ur_flange" />
     <child link="b_tool_tip_calib" />
     <origin xyz="${' '.join(str(val) for val in b_robot_to_tool['xyz'])}"
       rpy="${' '.join(str(val) for val in b_robot_to_tool['rpy'])}" />
