@@ -8,8 +8,6 @@
   <arg name="a_tool_calib" value="$(find ursurg_description)/config/ur5e_eua2_lnd470006_1.yaml" />
   <arg name="b_tool_calib" value="$(find ursurg_description)/config/ur5_eua1_lnd420006_1.yaml" />
 
-
-
   <param name="robot_description"
     command="$(find xacro)/xacro $(find ursurg_description)/urdf/ursurg.urdf.xacro
              a_kinematics_config_file:=$(arg a_kinematics_config)

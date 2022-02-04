@@ -9,15 +9,10 @@
   <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file)}" />
 
   <!-- A) UR5e robot -->
-  <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
-  <xacro:ur5e_robot prefix="a_ur_" joint_limited="true"
-    shoulder_pan_lower_limit="${-pi}" shoulder_pan_upper_limit="${pi}"
-    shoulder_lift_lower_limit="${-pi}" shoulder_lift_upper_limit="${pi}"
-    elbow_joint_lower_limit="${-pi}" elbow_joint_upper_limit="${pi}"
-    wrist_1_lower_limit="${-pi}" wrist_1_upper_limit="${pi}"
-    wrist_2_lower_limit="${-pi}" wrist_2_upper_limit="${pi}"
-    wrist_3_lower_limit="${-pi}" wrist_3_upper_limit="${pi}"
-    kinematics_file="${load_yaml('$(arg a_kinematics_config_file)')}" />
+  <xacro:include filename="$(find ur_description)/urdf/inc/ur5e_macro.xacro" />
+  <xacro:ur5e_robot
+    prefix="a_ur_"
+    kinematics_parameters_file="$(arg a_kinematics_config_file)" />
 
   <xacro:property name="world_to_a_base_link" value="${world_calib_data['world_to_a_base_link']}" />
 
@@ -42,15 +37,10 @@
   </joint>
 
   <!-- B) UR5 robot -->
-  <xacro:include filename="$(find ur_description)/urdf/ur5.urdf.xacro" />
-  <xacro:ur5_robot prefix="b_ur_" joint_limited="true"
-    shoulder_pan_lower_limit="${-pi}" shoulder_pan_upper_limit="${pi}"
-    shoulder_lift_lower_limit="${-pi}" shoulder_lift_upper_limit="${pi}"
-    elbow_joint_lower_limit="${-pi}" elbow_joint_upper_limit="${pi}"
-    wrist_1_lower_limit="${-pi}" wrist_1_upper_limit="${pi}"
-    wrist_2_lower_limit="${-pi}" wrist_2_upper_limit="${pi}"
-    wrist_3_lower_limit="${-pi}" wrist_3_upper_limit="${pi}"
-    kinematics_file="${load_yaml('$(arg b_kinematics_config_file)')}" />
+  <xacro:include filename="$(find ur_description)/urdf/inc/ur5_macro.xacro" />
+  <xacro:ur5_robot
+    prefix="b_ur_"
+    kinematics_parameters_file="$(arg b_kinematics_config_file)" />
 
   <xacro:property name="world_to_b_base_link" value="${world_calib_data['world_to_b_base_link']}" />
 
