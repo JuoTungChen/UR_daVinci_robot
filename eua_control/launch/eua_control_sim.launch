@@ -1,9 +1,0 @@
-<launch>
-  <node name="eua_control" pkg="eua_control" type="controller" output="screen">
-    <param name="simulated" value="true" />
-    <rosparam>
-      joint_device_mapping: {"roll": 1, "pitch": 2, "yaw1": 4, "yaw2": 3} <!-- maps joint names to device IDs -->
-    </rosparam>
-  </node>
-</launch>
-

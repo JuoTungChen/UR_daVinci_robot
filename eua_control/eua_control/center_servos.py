@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Bring Dynamixel servos with the given IDs to their center position.
 
@@ -13,7 +11,7 @@ import dynamixel
 import numpy as np
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('port')
     parser.add_argument('baudrate', type=int)

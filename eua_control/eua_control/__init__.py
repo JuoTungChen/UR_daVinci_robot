@@ -1,13 +1,45 @@
-from sensor_msgs.msg import JointState
-from std_srvs.srv import Trigger, TriggerResponse
+import sensor_msgs.msg
+import std_srvs.srv
 import numpy as np
 import reflexxes
-import rospy
+import rclpy
+import rclpy.node
+import rclpy.time
+import rclpy.qos
 import threading
 import dynamixel
+import time
+import array
 
 
-class EUA1Transmission(object):
+class MyJointState:
+    def __init__(self, stamp=None, name=None, position=None, velocity=None, effort=None):
+        self.stamp = stamp if stamp is not None else rclpy.time.Time()
+        self.name = name if name is not None else 4 * [None]
+        self.position = np.asarray(position) if position is not None else np.empty(4)
+        self.velocity = np.asarray(velocity) if velocity is not None else np.empty(4)
+        self.effort = np.asarray(effort) if effort is not None else np.empty(4)
+
+    def to_msg(self):
+        m = sensor_msgs.msg.JointState()
+        m.header.stamp = self.stamp.to_msg()
+        m.name = self.name
+        m.position = array.array('d', self.position)
+        m.velocity = array.array('d', self.velocity)
+        m.effort = array.array('d', self.effort)
+        return m
+
+    def copy(self):
+        m = MyJointState()
+        m.stamp = rclpy.Time(nanoseconds=self.stamp.nanoseconds())
+        m.name = self.name.copy()
+        np.copyto(m.position, self.position)
+        np.copyto(m.velocity, self.velocity)
+        np.copyto(m.effort, self.effort)
+        return m
+
+
+class EUA1Transmission:
     def __init__(self):
         t0 = 1.5     # motor-to-disc transmission (for all motors)
         t1 = 1.5632  # roll disc-to-joint transmission
@@ -30,7 +62,7 @@ class EUA1Transmission(object):
         return np.linalg.solve(self.K, joint_angles)
 
 
-class EUA2Transmission(object):
+class EUA2Transmission:
     def __init__(self):
         t1 = 1.0  # roll disc-to-joint transmission
         t2 = 1.0  # wrist disc-to-joint transmission
@@ -52,17 +84,18 @@ class EUA2Transmission(object):
         return np.linalg.solve(self.K, joint_angles)
 
 
-class EUAController(object):
+class EUAController(rclpy.node.Node):
     def __init__(self):
+        super().__init__('eua_controller', allow_undeclared_parameters=True, automatically_declare_parameters_from_overrides=True)
         self.loop_rate_hz = 100.0
-        self.simulated = rospy.get_param('~simulated', False)
+        self.simulated = self.get_parameter('simulated').value
 
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
-        self.eua_type = rospy.get_param('~type', None)
-        prefix = rospy.get_param('~prefix', '')
+        self.eua_type = self.get_parameter('type').value
+        prefix = self.get_parameter('prefix').value
         self.joint_names = [prefix + n for n in ('roll', 'pitch', 'yaw1', 'yaw2')]
-        self.joint_device_mapping = {dev_id: prefix + name for name, dev_id in rospy.get_param('~joint_device_mapping').items()}
+        self.joint_device_mapping = {p.value: prefix + name for name, p in self.get_parameters_by_prefix('joint_device_mapping').items()}
         self.joint_device_mapping.update({v: k for k, v in self.joint_device_mapping.items()})  # reverse mapping
         self.device_ids = tuple(self.joint_device_mapping[n] for n in self.joint_names)  # same order as joint_names
 
@@ -93,20 +126,23 @@ class EUAController(object):
             # Calibration offset (default to zero at servo center position)
             self.set_servo_calibration_offset(np.zeros(4))
 
-            rospy.loginfo("Starting in simulated mode")
+            self.get_logger().info("Starting in simulated mode")
         else:
+            port = self.get_parameter('port').value
+            baud_rate = self.get_parameter('baud_rate').value
+
             # setserial [port] low_latency
             import subprocess
-            subprocess.call(['setserial', rospy.get_param('~port'), 'low_latency'])
+            subprocess.call(['setserial', port, 'low_latency'])
 
             # Find Dynamixel servo devices
-            self.chain = dynamixel.Chain(rospy.get_param('~port'), rospy.get_param('~baud_rate'), self.device_ids)
+            self.chain = dynamixel.Chain(port, baud_rate, self.device_ids)
 
             if not self.chain.devices:
                 raise RuntimeError("No devices found on {}".format(self.chain.io.ser.name))
 
             for dev in self.chain.devices:
-                rospy.loginfo("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
+                self.get_logger().info("{} -> '{}'".format(dev, self.joint_device_mapping[dev.id]))
                 # import yaml
                 # print(yaml.dump(dev.dump_cc(), default_flow_style=False))
 
@@ -116,7 +152,7 @@ class EUAController(object):
             if self.device_ids != tuple(dev.id for dev in self.chain.devices):
                 raise RuntimeError("Device IDs mismatch")
 
-            self.set_servo_calibration_offset(np.array(rospy.get_param('~servo_calibration_offset', [0, 0, 0, 0])))
+            self.set_servo_calibration_offset(np.array(self.declare_parameter('servo_calibration_offset', [0.0, 0.0, 0.0, 0.0]).value))
 
             for dev in self.chain.devices:
                 if isinstance(dev, dynamixel.device.MX28):
@@ -125,12 +161,12 @@ class EUAController(object):
                     dev.write_param_single('ccw_angle_limit', 4095, raw=True)
 
 
-        self.pub_joint = rospy.Publisher('joint_states', JointState, queue_size=1)
-        self.pub_servo = rospy.Publisher('servo_states', JointState, queue_size=1) if rospy.get_param('~publish_servo_states', False) else None
+        self.pub_joint = self.create_publisher(sensor_msgs.msg.JointState, 'joint_states', rclpy.qos.qos_profile_sensor_data)
+        self.pub_servo = self.create_publisher(sensor_msgs.msg.JointState, 'servo_states', rclpy.qos.qos_profile_sensor_data) if self.declare_parameter('publish_servo_states', False).value else None
         self.subscribers = [
-            rospy.Subscriber('move_joint', JointState, self.init_trajectory),
-            rospy.Subscriber('servo_joint', JointState, self.set_joint_goal_direct),
-            rospy.Service('calibrate', Trigger, self.calibrate)
+            self.create_subscription(sensor_msgs.msg.JointState, 'move_joint', self.init_trajectory, rclpy.qos.qos_profile_services_default),
+            self.create_subscription(sensor_msgs.msg.JointState, 'servo_joint', self.set_joint_goal_direct, rclpy.qos.qos_profile_sensor_data),
+            self.create_service(std_srvs.srv.Trigger, 'calibrate', self.calibrate)
         ]
 
         self.state_update_callbacks = [self.publish]
@@ -151,13 +187,19 @@ class EUAController(object):
             raise RuntimeError("Cannot change calibration offset while trajectory is active")
 
         self.servo_calibration_offset = np.asarray(calibration_offset)
-        rospy.set_param('~servo_calibration_offset', self.servo_calibration_offset.tolist())
-        rospy.loginfo("Set calibration offset (in servo space) to: {} deg.".format(np.degrees(self.servo_calibration_offset)))
+
+        param = rclpy.parameter.Parameter(
+            'servo_calibration_offset',
+            rclpy.Parameter.Type.DOUBLE_ARRAY,
+            self.servo_calibration_offset.tolist()
+        )
+        self.set_parameters([param])
+        self.get_logger().info("Set calibration offset (in servo space) to: {} deg.".format(np.degrees(self.servo_calibration_offset)))
         self.reset_trajectory_generator()
 
     def read_servo_state(self):
-        s = JointState(position=np.empty(4), velocity=np.empty(4), effort=np.empty(4))
-        s.header.stamp = rospy.Time.now()
+        s = MyJointState()
+        s.stamp = self.get_clock().now()
 
         if self.simulated:
             s.name = [str(dev_id) for dev_id in self.device_ids]
@@ -183,12 +225,11 @@ class EUAController(object):
 
         # Subtract calibration offset from servo positions
         s.position -= self.servo_calibration_offset
-
         return s
 
     def compute_joint_state(self, servo_state):
-        s = JointState()
-        s.header.stamp = servo_state.header.stamp
+        s = MyJointState()
+        s.stamp = servo_state.stamp
         s.name = self.joint_names
         s.position = self.transmission.servo_to_joint(servo_state.position)
         s.velocity = self.transmission.servo_to_joint(servo_state.velocity)
@@ -215,11 +256,11 @@ class EUAController(object):
         """Set servo set-point directly without trajectory generation
         """
         if self.trajectory:
-            rospy.logwarn("Ignoring direct joint goal: already moving along trajectory")
+            self.get_logger().warn("Ignoring direct joint goal: already moving along trajectory")
             return
 
         if not m.name or not m.position:
-            rospy.logwarn("Bad input (name or position fields empty)")
+            self.get_logger().warn("Bad input (name or position fields empty)")
             return
 
         # Map names to servo IDs
@@ -248,7 +289,7 @@ class EUAController(object):
         """Set a joint-space trajectory setpoint for the given servos
         """
         if not m.name or not m.position:
-            rospy.logwarn("Bad input (name or position fields empty)")
+            self.get_logger().warn("Bad input (name or position fields empty)")
             return
 
         # Map names to servo IDs
@@ -291,16 +332,16 @@ class EUAController(object):
 
     def publish(self, servo_state, joint_state):
         if self.pub_servo is not None:
-            self.pub_servo.publish(servo_state)
+            self.pub_servo.publish(servo_state.to_msg())
 
-        self.pub_joint.publish(joint_state)
+        self.pub_joint.publish(joint_state.to_msg())
 
     def run(self):
-        rospy.loginfo("Starting servo loop")
-        rate = rospy.Rate(self.loop_rate_hz)
+        self.get_logger().info("Starting servo loop")
+        rate = self.create_rate(self.loop_rate_hz)
 
         try:
-            while not rospy.is_shutdown():
+            while rclpy.ok():
                 servo_state = self.read_servo_state()
                 joint_state = self.compute_joint_state(servo_state)
 
@@ -311,7 +352,7 @@ class EUAController(object):
                     f(servo_state, joint_state)
 
                 rate.sleep()  # TODO: check that loop rate is kept
-        except (KeyboardInterrupt, rospy.ROSInterruptException):
+        except KeyboardInterrupt:
             pass
         finally:
             if not self.simulated:
@@ -319,13 +360,14 @@ class EUAController(object):
                 for dev in self.chain.devices:
                     dev.write_param_single('torque_enable', False)
 
-    def calibrate(self, req):
+    def calibrate(self, request, response):
         if self.simulated:
             raise RuntimeError("Will not calibrate in simulated mode")
 
         calibrator = EUACalibrator(self)
         threading.Thread(target=calibrator.run).start()
-        return TriggerResponse(success=True)
+        response.success = True
+        return response
 
 
 class EUACalibrationError(Exception):
@@ -350,13 +392,13 @@ class EUACalibrator(object):
                 return self.servo_state is None
 
         while test_callback_received():
-            rospy.sleep(0.1)
+            time.sleep(0.1)
 
     def wait_for_controller_trajectory_end(self):
         while self.c.trajectory is not None:
-            rospy.sleep(0.1)
+            time.sleep(0.1)
 
-        rospy.sleep(0.75)
+        time.sleep(0.75)
 
     def run(self):
         try:
@@ -364,9 +406,9 @@ class EUACalibrator(object):
             for dev in self.c.chain.devices:
                 dev.write_param_single('torque_enable', False)
 
-            rospy.sleep(0.2)
+            time.sleep(0.2)
             self.c.set_servo_calibration_offset(np.zeros(4))
-            rospy.sleep(0.2)
+            time.sleep(0.2)
 
             # Subscribe to controller state changes
             self.c.state_update_callbacks.append(self.controller_state_changed)
@@ -385,7 +427,7 @@ class EUACalibrator(object):
 
             self._run()
         except EUACalibrationError as e:
-            rospy.logerr("Calibration error: {}".format(e))
+            self.c.get_logger().error("Calibration error: {}".format(e))
 
             # Ramp down current trajectory and wait until movement has stopped
             self.c.stop_trajectory_soft()
@@ -431,14 +473,14 @@ class EUACalibrator(object):
         reference_positions_in_servo_space = self.c.transmission.joint_to_servo(np.radians([0, 0, 130, 130]))  # Jaw limit is really around 110-115 deg.
 
         # FIXME: hard coded threshold values
-        thresholds = rospy.get_param('~homing_load_thresholds')
+        thresholds = self.c.get_parameter('homing_load_thresholds').value
 
         ROLL, PITCH, YAW1, YAW2 = range(4)
         LOWER, UPPER = range(2)
 
         def detect_limit_blocking(j, d):
             while True:
-                rospy.sleep(1.0 / self.c.loop_rate_hz / 2)
+                time.sleep(1.0 / self.c.loop_rate_hz / 2)
 
                 if self.c.trajectory is None:
                     raise EUACalibrationError("Trajectory reached the end (servo limit) without detecting the joint limit")
@@ -449,7 +491,7 @@ class EUACalibrator(object):
 
                 if ((d == 0 and servo_state.effort[j] > thresholds[j])
                         or (d == 1 and servo_state.effort[j] < -thresholds[j])):
-                    rospy.loginfo("Found '{}' {} joint limit at {:.1f} deg (servo) / {:.1f} deg (joint) - servo load: {:.3f}".format(
+                    self.c.get_logger().info("Found '{}' {} joint limit at {:.1f} deg (servo) / {:.1f} deg (joint) - servo load: {:.3f}".format(
                         self.c.joint_names[j],
                         'upper' if d == 1 else 'lower',
                         round(np.degrees(servo_state.position[j]), 1),
@@ -467,7 +509,7 @@ class EUACalibrator(object):
 
         # Find grasper joint limits
         for j in (YAW1, YAW2):
-            rospy.loginfo("Calibrating joint '{}'".format(self.c.joint_names[j]))
+            self.c.get_logger().info("Calibrating joint '{}'".format(self.c.joint_names[j]))
 
             # Move toward servo limit in the "grasper open"-direction (opposite
             # directions for each grasper jaw)
@@ -492,7 +534,7 @@ class EUACalibrator(object):
         # Find rotation and wrist lower+upper limits (the mid-points between these
         # values are then the zero position)
         for j in (ROLL, PITCH):
-            rospy.loginfo("Calibrating joint '{}'".format(self.c.joint_names[j]))
+            self.c.get_logger().info("Calibrating joint '{}'".format(self.c.joint_names[j]))
             limits = [None, None]
 
             for d in (LOWER, UPPER):

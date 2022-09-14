@@ -86,6 +86,9 @@ class Chain(object):
         except MissingDataError:
             # No response -> no servo with this ID attached
             return False
+        except UnboundLocalError:
+            # Bug in PySerial: https://github.com/pyserial/pyserial/issues/617
+            return False
         else:
             return True
 
