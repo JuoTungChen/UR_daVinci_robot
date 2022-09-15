@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mops_control</name>
+  <version>0.1.0</version>
+  <description>The mops_control package.</description>
+  <maintainer email="kils@mmmi.sdu.dk">Kim Lindberg Schwaner</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>urdf</depend>
+  <depend>kdl_parser</depend>
+  <depend>urdfdom_headers</depend>
+  <depend>orocos_kdl</depend>
+  <depend>eigen3-dev</depend>
+  <depend>range-v3-dev</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>mops_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
