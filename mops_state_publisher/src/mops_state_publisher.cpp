@@ -32,22 +32,17 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#include <ursurg_common/conversions/kdl.h>
-#include <ursurg_common/rosutility/subscription.h>
-
-#include <geometry_msgs/PoseStamped.h>
-#include <sensor_msgs/JointState.h>
-#include <ursurg_msgs/ToolEndEffectorStateStamped.h>
-
-#include <kdl_parser/kdl_parser.hpp>
-#include <ros/ros.h>
-#include <tf2_kdl/tf2_kdl.h>
-#include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_ros/transform_broadcaster.h>
-
-#include <kdl/chainfksolverpos_recursive.hpp>
-#include <kdl/tree.hpp>
-#include <urdf/model.h>
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
+#include "mops_msgs/msg/tool_end_effector_state_stamped.hpp"
+#include "tf2_ros/static_transform_broadcaster.h"
+#include "tf2_ros/transform_broadcaster.h"
+#include "kdl_parser/kdl_parser.hpp"
+#include "kdl/chainfksolverpos_recursive.hpp"
+#include "kdl/tree.hpp"
+#include "urdf/model.h"
+#include "rclcpp/rclcpp.hpp"
 
 #include <unordered_map>
 
@@ -55,6 +50,32 @@
 // same forward kinematics computations (transforms from each link to the next).
 
 using namespace std::string_literals;
+using namespace std::chrono_literals;
+
+template<typename T>
+auto sec_to_dur(T seconds) {
+    return std::chrono::duration<T, std::ratio<1>>(seconds);
+}
+
+geometry_msgs::msg::Pose kdl_to_pose(const KDL::Frame& tf)
+{
+    geometry_msgs::msg::Pose m;
+    m.position.x = tf.p.x();
+    m.position.y = tf.p.y();
+    m.position.z = tf.p.z();
+    tf.M.GetQuaternion(m.orientation.x, m.orientation.y, m.orientation.z, m.orientation.w);
+    return m;
+}
+
+geometry_msgs::msg::Transform kdl_to_transform(const KDL::Frame& tf)
+{
+  geometry_msgs::msg::Transform m;
+  m.translation.x = tf.p.x();
+  m.translation.y = tf.p.y();
+  m.translation.z = tf.p.z();
+  tf.M.GetQuaternion(m.rotation.x, m.rotation.y, m.rotation.z, m.rotation.w);
+  return m;
+}
 
 std::string slashStripped(const std::string& s)
 {
@@ -65,7 +86,7 @@ std::string slashStripped(const std::string& s)
 }
 
 // Compute yaw0 joint state and append it to m
-void appendYaw0(const std::string& prefix, sensor_msgs::JointState& m)
+void appendYaw0(const std::string& prefix, sensor_msgs::msg::JointState& m)
 {
     // Find indices of yaw1 and yaw2 joints
     std::ptrdiff_t j = -1;
@@ -98,11 +119,12 @@ struct SegmentData
     std::string root;
     std::string tip;
     double q;
-    ros::Time stamp; // last time q was updated
+    rclcpp::Time stamp; // last time q was updated
 
-    geometry_msgs::TransformStamped transform() const
+    geometry_msgs::msg::TransformStamped transform() const
     {
-        auto tf = tf2::kdlToTransform(segment.pose(q));
+        geometry_msgs::msg::TransformStamped tf;
+        tf.transform = kdl_to_transform(segment.pose(q));
         tf.header.stamp = stamp;
         tf.header.frame_id = root;
         tf.child_frame_id = tip;
@@ -113,12 +135,14 @@ struct SegmentData
 class RobotStatePublisher
 {
 public:
-    explicit RobotStatePublisher(const KDL::Tree& tree)
+    explicit RobotStatePublisher(rclcpp::Node::SharedPtr node, const KDL::Tree& tree)
+        : tf_broadcaster_(node)
+        , static_tf_broadcaster_(node)
     {
         addChildren(tree.getRootSegment());
     }
 
-    void updateJointPositions(const sensor_msgs::JointState& m)
+    void updateJointPositions(const sensor_msgs::msg::JointState& m)
     {
         for (std::size_t i = 0; i < m.name.size(); ++i) {
             auto& sd = segments_moving_.at(m.name[i]);
@@ -127,14 +151,15 @@ public:
         }
     }
 
-    void publishTransforms(const ros::TimerEvent& e)
+    void publishTransforms(rclcpp::Node::SharedPtr node)
     {
-        std::vector<geometry_msgs::TransformStamped> transforms;
+        std::vector<geometry_msgs::msg::TransformStamped> transforms;
         transforms.reserve(segments_moving_.size());
+        auto now = node->get_clock()->now();
 
         for (auto const& [name, sd] : segments_moving_)
             // Don't publish old data
-            if ((e.current_real - sd.stamp) < ros::Duration(1))
+            if ((now - sd.stamp) < 1s)
                 transforms.push_back(sd.transform());
 
         tf_broadcaster_.sendTransform(transforms);
@@ -142,7 +167,7 @@ public:
 
     void publishFixedTransforms()
     {
-        std::vector<geometry_msgs::TransformStamped> transforms;
+        std::vector<geometry_msgs::msg::TransformStamped> transforms;
         transforms.reserve(segments_fixed_.size());
 
         for (auto const& [name, sd] : segments_fixed_)
@@ -166,16 +191,17 @@ private:
         }
     }
 
-    std::unordered_map<std::string, SegmentData> segments_moving_;
-    std::unordered_map<std::string, SegmentData> segments_fixed_;
+private:
     tf2_ros::TransformBroadcaster tf_broadcaster_;
     tf2_ros::StaticTransformBroadcaster static_tf_broadcaster_;
+    std::unordered_map<std::string, SegmentData> segments_moving_;
+    std::unordered_map<std::string, SegmentData> segments_fixed_;
 };
 
 struct PoseGraspPublisher
 {
 public:
-    PoseGraspPublisher(const std::string& id, const KDL::Tree& tree)
+    PoseGraspPublisher(rclcpp::Node::SharedPtr node, const std::string& id, const KDL::Tree& tree)
         : root_(id + "_ur_base_link")
         , chain_(initChain(root_, id + "_tool_tcp0", tree))
         , fk_solver_(chain_)
@@ -193,10 +219,10 @@ public:
         q_current_index_.insert({id + "_tool_yaw1", &q_current_yaw_[0]});
         q_current_index_.insert({id + "_tool_yaw2", &q_current_yaw_[1]});
 
-        pub_ = nh_.advertise<ursurg_msgs::ToolEndEffectorStateStamped>("/" + id + "/ee_state_current", 1);
+        pub_ = node->create_publisher<mops_msgs::msg::ToolEndEffectorStateStamped>("/" + id + "/ee_state_current", rclcpp::SensorDataQoS());
     }
 
-    void updateJointPositions(const sensor_msgs::JointState& m)
+    void updateJointPositions(const sensor_msgs::msg::JointState& m)
     {
         for (std::size_t i = 0; i < m.name.size(); ++i)
             *q_current_index_.at(m.name[i]) = m.position[i];
@@ -204,10 +230,12 @@ public:
         last_update_ = m.header.stamp;
     }
 
-    void publish(const ros::TimerEvent& e)
+    void publish(rclcpp::Node::SharedPtr node)
     {
+        auto now = node->get_clock()->now();
+
         // Don't publish old data
-        if ((e.current_real - last_update_) > ros::Duration(1))
+        if ((now - last_update_) > 1s)
             return;
 
         KDL::Frame tf;
@@ -215,12 +243,12 @@ public:
         if (auto err = fk_solver_.JntToCart(q_current_, tf); err != KDL::ChainFkSolverPos_recursive::E_NOERROR)
             throw std::runtime_error("FK failed with error: "s + fk_solver_.strError(err));
 
-        ursurg_msgs::ToolEndEffectorStateStamped m;
-        m.header.stamp = e.current_real;
+        mops_msgs::msg::ToolEndEffectorStateStamped m;
+        m.header.stamp = now;
         m.header.frame_id = root_;
-        m.ee.pose = convert_to<geometry_msgs::Pose>(tf);
+        m.ee.pose = kdl_to_pose(tf);
         m.ee.grasper_angle = q_current_yaw_[0] + q_current_yaw_[1];
-        pub_.publish(m);
+        pub_->publish(m);
     }
 
 private:
@@ -243,69 +271,83 @@ private:
     KDL::JntArray q_current_;
     std::array<double, 2> q_current_yaw_;
     std::unordered_map<std::string, double*> q_current_index_;
-    ros::Time last_update_;
-    ros::NodeHandle nh_;
-    ros::Publisher pub_;
+    rclcpp::Time last_update_;
+    rclcpp::Publisher<mops_msgs::msg::ToolEndEffectorStateStamped>::SharedPtr pub_;
 };
 
 int main(int argc, char* argv[])
 {
-    ros::init(argc, argv, "ursurg_state_publisher");
-    ros::NodeHandle nh;
-    ros::NodeHandle nh_priv("~");
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<rclcpp::Node>("mops_state_publisher");
+    auto urdf_xml = node->declare_parameter("robot_description", ""s);
+
+    if (urdf_xml.empty())
+        throw std::runtime_error("The 'robot_description' parameter is empty");
 
     urdf::Model model;
 
-    if (!model.initParam("robot_description"))
-        throw std::runtime_error("Failed to load URDF model from parameter server");
+    if (!model.initString(urdf_xml))
+        throw std::runtime_error("Failed to initialize urdf::Model");
 
     KDL::Tree tree;
 
     if (!kdl_parser::treeFromUrdfModel(model, tree))
         throw std::runtime_error("Failed to construct KDL tree from URDF model");
 
-    RobotStatePublisher robot_state_publisher(tree);
-    PoseGraspPublisher pose_pub_a("a", tree);
-    PoseGraspPublisher pose_pub_b("b", tree);
+    RobotStatePublisher robot_state_publisher(node, tree);
+    PoseGraspPublisher pose_pub_a(node, "a", tree);
+    PoseGraspPublisher pose_pub_b(node, "b", tree);
 
-    std::list<ros::Subscriber> subscribers = {
-        mksub<sensor_msgs::JointState>(
-            nh, "/a/ur/joint_states", 1, [&](const auto& m) {
+    std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers {
+        node->create_subscription<sensor_msgs::msg::JointState>(
+            "/a/ur/joint_states",
+            rclcpp::SensorDataQoS(),
+            [&](const sensor_msgs::msg::JointState& m) {
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_a.updateJointPositions(m);
-            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "/a/tool/joint_states", 1, [&](auto m) {
+            }),
+        node->create_subscription<sensor_msgs::msg::JointState>(
+            "/a/tool/joint_states",
+            rclcpp::SensorDataQoS(),
+            [&](sensor_msgs::msg::JointState m) {
                 appendYaw0("a_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_a.updateJointPositions(m);
-            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "/b/ur/joint_states", 1, [&](const auto& m) {
+            }),
+        node->create_subscription<sensor_msgs::msg::JointState>(
+            "/b/ur/joint_states",
+            rclcpp::SensorDataQoS(),
+            [&](const sensor_msgs::msg::JointState& m) {
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_b.updateJointPositions(m);
-            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
-        mksub<sensor_msgs::JointState>(
-            nh, "/b/tool/joint_states", 1, [&](auto m) {
+            }),
+        node->create_subscription<sensor_msgs::msg::JointState>(
+            "/b/tool/joint_states",
+            rclcpp::SensorDataQoS(),
+            [&](sensor_msgs::msg::JointState m) {
                 appendYaw0("b_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_b.updateJointPositions(m);
-            }, ros::TransportHints().udp().tcp().tcpNoDelay()),
+            }),
     };
 
-    std::list<ros::Timer> timers = {
-        nh.createTimer(ros::Duration(1.0 / nh_priv.param("tf_publish_frequency", 50.0)),
-                       &RobotStatePublisher::publishTransforms,
-                       &robot_state_publisher),
-        nh.createTimer(ros::Duration(1.0 / nh_priv.param("ee_publish_frequency", 125.0)),
-                       &PoseGraspPublisher::publish,
-                       &pose_pub_a),
-        nh.createTimer(ros::Duration(1.0 / nh_priv.param("ee_publish_frequency", 125.0)),
-                       &PoseGraspPublisher::publish,
-                       &pose_pub_b),
+    std::list<rclcpp::TimerBase::SharedPtr> timers {
+        node->create_wall_timer(
+            sec_to_dur(1.0 / node->declare_parameter("tf_publish_frequency", 50.0)),
+            [&robot_state_publisher, node]() { robot_state_publisher.publishTransforms(node); }
+        ),
+        node->create_wall_timer(
+            sec_to_dur(1.0 / node->declare_parameter("ee_publish_frequency", 125.0)),
+            [&pose_pub_a, node]() { pose_pub_a.publish(node); }
+        ),
+        node->create_wall_timer(
+            sec_to_dur(1.0 / node->declare_parameter("ee_publish_frequency", 125.0)),
+            [&pose_pub_b, node]() { pose_pub_b.publish(node); }
+        ),
     };
 
     robot_state_publisher.publishFixedTransforms();
-    ros::spin();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
     return EXIT_SUCCESS;
 }
