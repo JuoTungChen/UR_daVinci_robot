@@ -1,6 +1,5 @@
-#include <std_msgs/Bool.h>
-
-#include <ros/ros.h>
+#include "std_msgs/msg/bool.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 #include <QApplication>
 #include <QHBoxLayout>
@@ -10,9 +9,9 @@
 
 #include <csignal>
 
-std_msgs::Bool boolMsg(bool value)
+std_msgs::msg::Bool boolMsg(bool value)
 {
-    std_msgs::Bool m;
+    std_msgs::msg::Bool m;
     m.data = value;
     return m;
 }
@@ -115,25 +114,26 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    ros::init(argc, argv, "footcontrol", ros::init_options::NoSigintHandler);
-    ros::NodeHandle nh;
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<rclcpp::Node>("footcontrol");
 
     // SIGINT quits the Qt event loop
     std::signal(SIGINT, [](int) { QApplication::quit(); });
 
-    std::array<ros::Publisher, 3> publishers = {
-        nh.advertise<std_msgs::Bool>("left", 4, true),
-        nh.advertise<std_msgs::Bool>("middle", 4, true),
-        nh.advertise<std_msgs::Bool>("right", 4, true),
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(5)).transient_local();
+    std::array<rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr, 3> publishers = {
+        node->create_publisher<std_msgs::msg::Bool>("left", qos),
+        node->create_publisher<std_msgs::msg::Bool>("middle", qos),
+        node->create_publisher<std_msgs::msg::Bool>("right", qos),
     };
 
     // Publish initial value (latched topic)
     for (auto& pub : publishers)
-        pub.publish(boolMsg(false));
+        pub->publish(boolMsg(false));
 
     FootControlWidget widget;
     QObject::connect(&widget, &FootControlWidget::pedalEngagedChanged, [&](Pedal i, bool engaged) {
-        publishers[i].publish(boolMsg(engaged));
+        publishers[i]->publish(boolMsg(engaged));
     });
     widget.show();
 
