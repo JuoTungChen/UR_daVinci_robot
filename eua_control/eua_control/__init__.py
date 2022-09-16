@@ -437,7 +437,7 @@ class EUACalibrator(object):
             self.c.set_servo_calibration_offset(self.calibration_offset)
 
             # Move back to initial position
-            self.c.init_trajectory(JointState(name=self.c.joint_names, position=self.initial_joint_state.position.tolist()))
+            self.c.init_trajectory(MyJointState(name=self.c.joint_names, position=self.initial_joint_state.position.tolist()))
             self.wait_for_controller_trajectory_end()
         finally:
             if self.controller_state_changed in self.c.state_update_callbacks:
@@ -519,7 +519,7 @@ class EUACalibrator(object):
                 d = UPPER
 
             target_position = servo_to_joint_for_joint(j, servo_limits_lower[j] + 0.01 if d == LOWER else servo_limits_upper[j] - 0.01)
-            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
+            self.c.init_trajectory(MyJointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
 
             # Wait until we hit the joint limit
             detected_positions_in_servo_space[j] = detect_limit_blocking(j, d)[0]
@@ -527,7 +527,7 @@ class EUACalibrator(object):
 
             # Move back to the initial position
             self.set_tg_limits_orig()
-            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
+            self.c.init_trajectory(MyJointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
             self.wait_for_controller_trajectory_end()
             self.set_tg_limits_safe()
 
@@ -540,7 +540,7 @@ class EUACalibrator(object):
             for d in (LOWER, UPPER):
                 # Move toward servo lower- and upper limits
                 target_position = servo_to_joint_for_joint(j, servo_limits_lower[j] + 0.01 if d == LOWER else servo_limits_upper[j] - 0.01)
-                self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
+                self.c.init_trajectory(MyJointState(name=[self.c.joint_names[j]], position=[target_position[j]]))
 
                 # Wait until we hit the joint limit
                 limits[d] = detect_limit_blocking(j, d)[0]
@@ -548,7 +548,7 @@ class EUACalibrator(object):
 
             # Move back to the initial position
             self.set_tg_limits_orig()
-            self.c.init_trajectory(JointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
+            self.c.init_trajectory(MyJointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
             self.wait_for_controller_trajectory_end()
             self.set_tg_limits_safe()
 
@@ -560,4 +560,4 @@ class EUACalibrator(object):
         # Move joints to home position
         self.set_tg_limits_orig()
         home_position = np.radians([0, 0, 30, 30])  # FIXME: hard coded values
-        self.c.init_trajectory(JointState(name=self.c.joint_names, position=home_position.tolist()))
+        self.c.init_trajectory(MyJointState(name=self.c.joint_names, position=home_position.tolist()))
