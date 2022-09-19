@@ -1,16 +1,13 @@
-cmake_minimum_required(VERSION 3.1)
-project(ursurg_description)
+cmake_minimum_required(VERSION 3.8)
+project(mops_description)
 
-find_package(catkin REQUIRED)
+find_package(ament_cmake REQUIRED)
 
-catkin_package()
+install(
+  DIRECTORY config meshes urdf
+  DESTINATION share/${PROJECT_NAME}
+)
 
-# set(xacro_files
-#   urdf/lnd.urdf.xacro
-# )
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 
-# xacro_add_files(${xacro_files}
-#   INORDER
-#   TARGET xacro_target
-#   INSTALL DESTINATION urdf
-# )
+ament_package()
