@@ -1,19 +1,12 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>mops_teleop</name>
+  <name>mops_common</name>
   <version>0.1.0</version>
-  <description>The mops_teleop package.</description>
+  <description>The mops_common package.</description>
   <maintainer email="kils@mmmi.sdu.dk">Kim Lindberg Schwaner</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>rclcpp</depend>
-  <depend>range-v3-dev</depend>
-  <depend>geometry_msgs</depend>
-  <depend>mops_common</depend>
-  <depend>mops_msgs</depend>
-  <depend>touch_msgs</depend>
-  <depend>tf2_ros</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

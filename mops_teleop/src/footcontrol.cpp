@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
     // SIGINT quits the Qt event loop
     std::signal(SIGINT, [](int) { QApplication::quit(); });
 
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(5)).transient_local();
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).transient_local();
     std::array<rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr, 3> publishers = {
         node->create_publisher<std_msgs::msg::Bool>("left", qos),
         node->create_publisher<std_msgs::msg::Bool>("middle", qos),
