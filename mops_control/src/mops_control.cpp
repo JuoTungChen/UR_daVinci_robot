@@ -1,14 +1,14 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "mops_msgs/msg/tool_end_effector_state_stamped.hpp"
-
+#include "mops_common/conversions/kdl.hpp"
+#include "mops_common/mathutility.hpp"
 #include "kdl/chainfksolverpos_recursive.hpp"
 #include "kdl/chainiksolverpos_nr_jl.hpp"
 #include "kdl/chainiksolvervel_wdls.hpp"
 #include "kdl/tree.hpp"
 #include "kdl_parser/kdl_parser.hpp"
 #include "urdf/model.h"
-
 #include "rclcpp/rclcpp.hpp"
 
 #include <range/v3/action/push_back.hpp>
@@ -19,17 +19,7 @@
 
 #include <optional>
 
-static constexpr double pi = 3.14159265358979323846; // TODO Use C++20's std::numbers::pi when this fix is released https://github.com/ros2/rclcpp/pull/1937
-
 using namespace std::string_literals;
-
-KDL::Frame convert(const geometry_msgs::msg::Pose& m)
-{
-    return {
-        KDL::Rotation::Quaternion(m.orientation.x, m.orientation.y, m.orientation.z, m.orientation.w),
-        KDL::Vector(m.position.x, m.position.y, m.position.z)
-    };
-}
 
 struct Init
 {
@@ -215,7 +205,7 @@ public:
                     if (!init_.ur || !init_.tool)
                         return;
 
-                    auto sol = get_ik_solution(convert(m.pose), m.grasper_angle);
+                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m.pose), m.grasper_angle);
 
                     if (sol) {
                         pub_robot_servo_joint_->publish(sol->first);
@@ -227,7 +217,7 @@ public:
                     if (!init_.ur || !init_.tool)
                         return;
 
-                    auto sol = get_ik_solution(convert(m.ee.pose), m.ee.grasper_angle);
+                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m.ee.pose), m.ee.grasper_angle);
 
                     if (sol) {
                         pub_robot_move_joint_->publish(sol->first);
@@ -243,7 +233,7 @@ public:
     {
         // If q_current and q_desired (the previous IK solution) are close,
         // we use q_desired as the seed for the IK algorithm
-        auto q_init = ((q_desired_.data - q_current_.data).norm() > pi / 8) ? q_current_ : q_desired_;
+        auto q_init = ((q_desired_.data - q_current_.data).norm() > math::pi / 8) ? q_current_ : q_desired_;
 
         // Find configuration of joints in 'chain'
         if (auto err = ik_solver_pos_->CartToJnt(q_init, pose_desired, q_desired_);
