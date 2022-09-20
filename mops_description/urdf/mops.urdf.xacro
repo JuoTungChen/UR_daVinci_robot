@@ -1,13 +1,22 @@
 <?xml version="1.0"?>
-<robot name="ursurg" xmlns:xacro="http://ros.org/wiki/xacro">
-
-  <xacro:include filename="lnd.urdf.xacro" />
+<robot name="mops" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" />
+  <xacro:include filename="lnd.urdf.xacro" />
 
-  <link name="world" />
+  <xacro:arg name="a_joint_limit_params_file" default="$(find ur_description)/config/ur5e/joint_limits.yaml"/>
+  <xacro:arg name="a_kinematics_params_file" default="$(find ur_description)/config/ur5e/default_kinematics.yaml"/>
+  <xacro:arg name="a_physical_params_file" default="$(find ur_description)/config/ur5e/physical_parameters.yaml"/>
+  <xacro:arg name="a_visual_params_file" default="$(find ur_description)/config/ur5e/visual_parameters.yaml"/>
+
+  <xacro:arg name="b_joint_limit_params_file" default="$(find ur_description)/config/ur5/joint_limits.yaml"/>
+  <xacro:arg name="b_kinematics_params_file" default="$(find ur_description)/config/ur5/default_kinematics.yaml"/>
+  <xacro:arg name="b_physical_params_file" default="$(find ur_description)/config/ur5/physical_parameters.yaml"/>
+  <xacro:arg name="b_visual_params_file" default="$(find ur_description)/config/ur5/visual_parameters.yaml"/>
 
   <xacro:property name="world_calib_file" value="$(find mops_description)/config/world_calib.yaml" />
   <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file)}" />
+
+  <link name="world" />
 
   <!-- A) UR5e robot -->
   <xacro:property name="world_to_a_base_link" value="${world_calib_data['world_to_a_base_link']}" />
@@ -15,14 +24,14 @@
       name="ur_a"
       prefix="a_ur_"
       parent="world"
-      joint_limits_parameters_file="$(find ur_description)/config/ur5e/joint_limits.yaml"
-      kinematics_parameters_file="$(find ur_description)/config/ur5e/default_kinematics.yaml"
-      physical_parameters_file="$(find ur_description)/config/ur5e/physical_parameters.yaml"
-      visual_parameters_file="$(find ur_description)/config/ur5e/visual_parameters.yaml">
+      joint_limits_parameters_file="$(arg a_joint_limit_params_file)"
+      kinematics_parameters_file="$(arg a_kinematics_params_file)"
+      physical_parameters_file="$(arg a_physical_params_file)"
+      visual_parameters_file="$(arg a_visual_params_file)"
+      transmission_hw_interface="">
     <origin xyz="${' '.join(str(val) for val in world_to_a_base_link['xyz'])}"
         rpy="${' '.join(str(val) for val in world_to_a_base_link['rpy'])}" />
   </xacro:ur_robot>
-
 
   <!-- <joint name="a_world_ur_base_joint" type="fixed">
     <parent link="world" />
@@ -50,10 +59,11 @@
       name="ur_b"
       prefix="b_ur_"
       parent="world"
-      joint_limit_params_file="$(find ur_description)/config/ur5/joint_limits.yaml"
-      kinematics_params_file="$(find ur_description)/config/ur5/default_kinematics.yaml"
-      physical_params_file="$(find ur_description)/config/ur5/physical_parameters.yaml"
-      visual_params_file="$(find ur_description)/config/ur5/visual_parameters.yaml">
+      joint_limits_parameters_file="$(arg b_joint_limit_params_file)"
+      kinematics_parameters_file="$(arg b_kinematics_params_file)"
+      physical_parameters_file="$(arg b_physical_params_file)"
+      visual_parameters_file="$(arg b_visual_params_file)"
+      transmission_hw_interface="">
     <origin xyz="${' '.join(str(val) for val in world_to_b_base_link['xyz'])}"
         rpy="${' '.join(str(val) for val in world_to_b_base_link['rpy'])}" />
   </xacro:ur_robot>
