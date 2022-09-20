@@ -5,10 +5,8 @@ find_package(ament_cmake REQUIRED)
 find_package(ur_description REQUIRED)
 
 install(
-  DIRECTORY config meshes urdf
+  DIRECTORY meshes urdf
   DESTINATION share/${PROJECT_NAME}
 )
-
-ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 ament_package()
