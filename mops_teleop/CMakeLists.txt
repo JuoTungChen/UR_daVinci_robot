@@ -25,7 +25,7 @@ target_compile_features(foot_control PRIVATE cxx_std_17)
 target_compile_options(foot_control PRIVATE -Wall -Wextra)
 
 install(
-  TARGETS foot_control
+  TARGETS foot_control teleop
   DESTINATION lib/${PROJECT_NAME}
 )
 
