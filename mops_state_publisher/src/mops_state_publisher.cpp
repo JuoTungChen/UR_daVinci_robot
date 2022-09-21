@@ -113,6 +113,7 @@ struct SegmentData
         , root(slashStripped(root))
         , tip(slashStripped(tip))
         , q(0)
+        , stamp(0, 0, RCL_ROS_TIME)
     {}
 
     KDL::Segment segment;
@@ -155,7 +156,7 @@ public:
     {
         std::vector<geometry_msgs::msg::TransformStamped> transforms;
         transforms.reserve(segments_moving_.size());
-        auto now = node->get_clock()->now();
+        auto now = node->now();
 
         for (auto const& [name, sd] : segments_moving_)
             // Don't publish old data
@@ -207,6 +208,7 @@ public:
         , fk_solver_(chain_)
         , q_current_(chain_.getNrOfJoints())
         , q_current_yaw_{}
+        , last_update_(0, 0, RCL_ROS_TIME)
     {
         unsigned i = 0;
 
@@ -232,7 +234,7 @@ public:
 
     void publish(rclcpp::Node::SharedPtr node)
     {
-        auto now = node->get_clock()->now();
+        auto now = node->now();
 
         // Don't publish old data
         if ((now - last_update_) > 1s)
@@ -331,17 +333,18 @@ int main(int argc, char* argv[])
             }),
     };
 
+    auto ee_publish_frequency = node->declare_parameter("ee_publish_frequency", 125.0);
     std::list<rclcpp::TimerBase::SharedPtr> timers {
         node->create_wall_timer(
             sec_to_dur(1.0 / node->declare_parameter("tf_publish_frequency", 50.0)),
             [&robot_state_publisher, node]() { robot_state_publisher.publishTransforms(node); }
         ),
         node->create_wall_timer(
-            sec_to_dur(1.0 / node->declare_parameter("ee_publish_frequency", 125.0)),
+            sec_to_dur(1.0 / ee_publish_frequency),
             [&pose_pub_a, node]() { pose_pub_a.publish(node); }
         ),
         node->create_wall_timer(
-            sec_to_dur(1.0 / node->declare_parameter("ee_publish_frequency", 125.0)),
+            sec_to_dur(1.0 / ee_publish_frequency),
             [&pose_pub_b, node]() { pose_pub_b.publish(node); }
         ),
     };
