@@ -13,8 +13,9 @@
   <xacro:arg name="b_physical_params_file" default="$(find ur_description)/config/ur5/physical_parameters.yaml"/>
   <xacro:arg name="b_visual_params_file" default="$(find ur_description)/config/ur5/visual_parameters.yaml"/>
 
-  <xacro:property name="world_calib_file" value="$(find mops_description)/config/world_calib.yaml" />
-  <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file)}" />
+  <!-- <xacro:arg name="world_calib_file" default="" /> -->
+  <xacro:property name="world_calib_file_prop" value="$(arg world_calib_file)" />
+  <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file_prop)}" />
 
   <link name="world" />
 
@@ -33,17 +34,11 @@
         rpy="${' '.join(str(val) for val in world_to_a_base_link['rpy'])}" />
   </xacro:ur_robot>
 
-  <!-- <joint name="a_world_ur_base_joint" type="fixed">
-    <parent link="world" />
-    <child link="a_ur_base_link" />
-    <origin xyz="${' '.join(str(val) for val in world_to_a_base_link['xyz'])}"
-      rpy="${' '.join(str(val) for val in world_to_a_base_link['rpy'])}" />
-  </joint> -->
-
   <!-- A) LND 470006 tool -->
   <xacro:lnd470006 prefix="a_tool_" />
 
-  <xacro:property name="a_tool_calib_data" value="${load_yaml('$(arg a_tool_calib_file)')}" />
+  <xacro:property name="a_tool_calib_file_prop" value="$(arg a_tool_calib_file)" />
+  <xacro:property name="a_tool_calib_data" value="${load_yaml(a_tool_calib_file_prop)}" />
   <xacro:property name="a_robot_to_tool" value="${a_tool_calib_data['robot_to_tool']}" />
 
   <joint name="a_ur_tool_joint" type="fixed">
@@ -68,18 +63,11 @@
         rpy="${' '.join(str(val) for val in world_to_b_base_link['rpy'])}" />
   </xacro:ur_robot>
 
-
-  <!-- <joint name="b_world_ur_base_joint" type="fixed">
-    <parent link="world" />
-    <child link="b_ur_base_link" />
-    <origin xyz="${' '.join(str(val) for val in world_to_b_base_link['xyz'])}"
-      rpy="${' '.join(str(val) for val in world_to_b_base_link['rpy'])}" />
-  </joint> -->
-
   <!-- B) LND 420006 tool -->
   <xacro:lnd420006 prefix="b_tool_" />
 
-  <xacro:property name="b_tool_calib_data" value="${load_yaml('$(arg b_tool_calib_file)')}" />
+  <xacro:property name="b_tool_calib_file_prop" value="$(arg b_tool_calib_file)" />
+  <xacro:property name="b_tool_calib_data" value="${load_yaml(b_tool_calib_file_prop)}" />
   <xacro:property name="b_robot_to_tool" value="${b_tool_calib_data['robot_to_tool']}" />
 
   <joint name="b_eua2_tool_joint" type="fixed">

@@ -17,7 +17,7 @@
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
         <geometry>
-          <mesh filename="package://ursurg_description/meshes/lnd_tip/roll.stl" />
+          <mesh filename="package://mops_description/meshes/lnd_tip/roll.stl" />
         </geometry>
         <material name="tip_metallic_gray" />
       </visual>
@@ -27,7 +27,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
         <geometry>
-          <mesh filename="package://ursurg_description/meshes/lnd_tip/wrist.stl" />
+          <mesh filename="package://mops_description/meshes/lnd_tip/wrist.stl" />
         </geometry>
         <material name="tip_metallic_gray" />
       </visual>
@@ -41,7 +41,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 ${pi/2} 0" />
         <geometry>
-          <mesh filename="package://ursurg_description/meshes/lnd_tip/jaw.stl" />
+          <mesh filename="package://mops_description/meshes/lnd_tip/jaw.stl" />
         </geometry>
         <material name="tip_metallic_gray" />
       </visual>
@@ -51,7 +51,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 ${pi/2} 0" />
         <geometry>
-          <mesh filename="package://ursurg_description/meshes/lnd_tip/jaw.stl" />
+          <mesh filename="package://mops_description/meshes/lnd_tip/jaw.stl" />
         </geometry>
         <material name="tip_metallic_gray" />
       </visual>
