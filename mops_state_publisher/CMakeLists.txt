@@ -10,11 +10,13 @@ find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(mops_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(mops_state_publisher src/mops_state_publisher.cpp)
 target_compile_features(mops_state_publisher PRIVATE cxx_std_17)
 target_compile_options(mops_state_publisher PRIVATE -Wall -Wextra)
-ament_target_dependencies(mops_state_publisher rclcpp urdf kdl_parser orocos_kdl tf2_ros geometry_msgs sensor_msgs mops_msgs)
+ament_target_dependencies(mops_state_publisher
+  rclcpp urdf kdl_parser orocos_kdl tf2_ros geometry_msgs sensor_msgs mops_msgs std_msgs)
 
 install(
   TARGETS mops_state_publisher

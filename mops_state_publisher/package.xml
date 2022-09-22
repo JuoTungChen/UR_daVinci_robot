@@ -17,6 +17,7 @@
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>mops_msgs</depend>
+  <depend>std_msgs</depend>
   <build_depend>liborocos-kdl-dev</build_depend>
   <build_export_depend>liborocos-kdl-dev</build_export_depend>
   <exec_depend>liborocos-kdl</exec_depend>

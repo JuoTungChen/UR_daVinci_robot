@@ -36,6 +36,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "mops_msgs/msg/tool_end_effector_state_stamped.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "tf2_ros/static_transform_broadcaster.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "kdl_parser/kdl_parser.hpp"
@@ -300,6 +301,8 @@ int main(int argc, char* argv[])
     PoseGraspPublisher pose_pub_a(node, "a", tree);
     PoseGraspPublisher pose_pub_b(node, "b", tree);
 
+    auto pub_descr = node->create_publisher<std_msgs::msg::String>("robot_description", rclcpp::QoS(1).transient_local());
+
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers {
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/a/ur/joint_states",
@@ -349,7 +352,12 @@ int main(int argc, char* argv[])
         ),
     };
 
+    auto msg = std::make_unique<std_msgs::msg::String>();
+    msg->data = urdf_xml;
+    pub_descr->publish(std::move(msg));
+
     robot_state_publisher.publishFixedTransforms();
+
     rclcpp::spin(node);
     rclcpp::shutdown();
     return EXIT_SUCCESS;
