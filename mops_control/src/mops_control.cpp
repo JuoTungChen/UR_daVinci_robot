@@ -170,6 +170,14 @@ public:
         pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", rclcpp::SensorDataQoS());
 
         subscribers_ = {
+            create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::SensorDataQoS(),
+                [this](sensor_msgs::msg::JointState m) {
+                    // Cache current UR joint angles
+                    for (auto [n, q] : ranges::views::zip(m.name, m.position))
+                        *q_current_by_name_[n] = q;
+
+                    init_.ur = true;
+                }),
             create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::SensorDataQoS(),
                 [this, tool_prefix](sensor_msgs::msg::JointState m) {
                     append_yaw0(tool_prefix, m);
