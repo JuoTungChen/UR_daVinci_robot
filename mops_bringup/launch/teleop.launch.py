@@ -43,7 +43,7 @@ def generate_launch_description():
             namespace='/a/tool',
             parameters=[{
                 'type': 2,
-                'port': '/dev/ftdi_FT4TFQFO',
+                'port': '/dev/ftdi_FT4NNYP8',
                 'baud_rate': 2000000,
                 'prefix': 'a_tool_',
                 'joint_device_mapping': {'roll': 23, 'pitch': 21, 'yaw1': 22, 'yaw2': 20},
