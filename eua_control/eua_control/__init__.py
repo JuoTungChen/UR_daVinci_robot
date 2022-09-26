@@ -16,9 +16,9 @@ class MyJointState:
     def __init__(self, stamp=None, name=None, position=None, velocity=None, effort=None):
         self.stamp = stamp if stamp is not None else rclpy.time.Time()
         self.name = name if name is not None else 4 * [None]
-        self.position = np.asarray(position) if position is not None else np.empty(4)
-        self.velocity = np.asarray(velocity) if velocity is not None else np.empty(4)
-        self.effort = np.asarray(effort) if effort is not None else np.empty(4)
+        self.position = np.asarray(position) if position is not None else np.zeros(4)
+        self.velocity = np.asarray(velocity) if velocity is not None else np.zeros(4)
+        self.effort = np.asarray(effort) if effort is not None else np.zeros(4)
 
     def to_msg(self):
         m = sensor_msgs.msg.JointState()
