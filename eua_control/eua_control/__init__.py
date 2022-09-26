@@ -255,11 +255,14 @@ class EUAController(rclpy.node.Node):
     def set_joint_goal_direct(self, m):
         """Set servo set-point directly without trajectory generation
         """
+        position = m.position.tolist()
+        velocity = m.velocity.tolist()
+
         if self.trajectory:
             self.get_logger().warn("Ignoring direct joint goal: already moving along trajectory")
             return
 
-        if not m.name or not m.position:
+        if not m.name or not position:
             self.get_logger().warn("Bad input (name or position fields empty)")
             return
 
@@ -273,8 +276,8 @@ class EUAController(rclpy.node.Node):
         for i, dev_id in enumerate(self.device_ids):
             if dev_id in msg_dev_id:
                 j = msg_dev_id.index(dev_id)
-                target_position[i] = m.position[j]
-                target_velocity[i] = m.velocity[j] if m.velocity else 0
+                target_position[i] = position[j]
+                target_velocity[i] = velocity[j] if m.velocity else 0
 
         # Update trajectory generator current so that future trajectories starts
         # from the correct initial position
@@ -288,7 +291,10 @@ class EUAController(rclpy.node.Node):
     def init_trajectory(self, m):
         """Set a joint-space trajectory setpoint for the given servos
         """
-        if not m.name or not m.position:
+        position = m.position.tolist()
+        velocity = m.velocity.tolist()
+
+        if not m.name or not position:
             self.get_logger().warn("Bad input (name or position fields empty)")
             return
 
@@ -303,8 +309,8 @@ class EUAController(rclpy.node.Node):
         for i, dev_id in enumerate(self.device_ids):
             if dev_id in msg_dev_id:
                 j = msg_dev_id.index(dev_id)
-                target_position[i] = m.position[j]
-                target_velocity[i] = m.velocity[j] if m.velocity else 0
+                target_position[i] = position[j]
+                target_velocity[i] = velocity[j] if velocity else 0
 
         # rospy.loginfo("New target:\n\tjoints: {}\n\tpos:{} (servo)\n\tpos:{} (joint)".format(
         #     m.name,
