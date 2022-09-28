@@ -1,7 +1,7 @@
 repositories:
   mops_ros:
     type: git
-    url: git@gitlab.com:sdurobotics/medical/mops/mops_ros.git
+    url: git@gitlab.com:sdurobotics/medical/mops/mops_core.git
     version: main
   ur_rtde_ros:
     type: git

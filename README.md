@@ -2,7 +2,7 @@
 
 Surgical robot platform for research based on standard robot manipulators with adapters for surgical instruments.
 
-Target platform: Ubuntu 22.04 with ROS2 Humble.
+Target platform: Ubuntu 22.04 with ROS2 Humble/Rolling.
 
 
 ## Getting started
@@ -14,16 +14,18 @@ Target platform: Ubuntu 22.04 with ROS2 Humble.
    ```
 3. Set up workspace folder and pull source code
    ```bash
-   export MOPS_WS=~/workspace/mops
+   export MOPS_WS=~/rosws/mops
    mkdir -p $MOPS_WS/src
    cd $MOPS_WS/src
-   git clone git@gitlab.com:sdurobotics/medical/mops/mops_ros.git
-   vcs import --input mops_ros/mops.repos
+   git clone git@gitlab.com:sdurobotics/medical/mops/mops_core.git
+   vcs import --input mops_ros/mops-public.repos
    ```
 4. Install dependencies of packages in the workspace
    ```bash
+   # TODO
    #rosdep update
    #rosdep install --from-paths . --ignore-src -y -r
+   sudo apt install ros-humble-ur  # or ros-humble-ur
    ```
 5. Build workspace
    ```bash

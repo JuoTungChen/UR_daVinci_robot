@@ -1,0 +1,13 @@
+repositories:
+  mops_ros:
+    type: git
+    url: git@gitlab.sdu.dk:sdurobotics/medical/mops/mops_core.git
+    version: main
+  ur_rtde_ros:
+    type: git
+    url: git@gitlab.sdu.dk:sdurobotics/medical/ur_rtde_ros.git
+    version: master
+  touch:
+    type: git
+    url: git@gitlab.sdu.dk:sdurobotics/medical/touch.git
+    version: master
