@@ -9,8 +9,6 @@ def generate_mops_urdf():
     bringup_config_path = get_package_share_path('mops_bringup') / 'config'
     mappings = {
         'world_calib_file': str(bringup_config_path / 'world_calib.yaml'),
-        'a_tool_calib_file': str(bringup_config_path / 'ur5e_eua2_lnd470006_1.yaml'),
-        'b_tool_calib_file': str(bringup_config_path / 'ur5_eua1_lnd420006_1.yaml'),
     }
     doc = xacro.process_file(xacro_path, mappings=mappings)
     robot_description = doc.toxml()  # doc.toprettyxml(indent='  ')
