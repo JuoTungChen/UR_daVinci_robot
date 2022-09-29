@@ -1,17 +1,18 @@
 <?xml version="1.0"?>
 <robot name="mops" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" />
-  <xacro:include filename="lnd.urdf.xacro" />
 
-  <xacro:arg name="a_joint_limit_params_file" default="$(find ur_description)/config/ur5e/joint_limits.yaml"/>
-  <xacro:arg name="a_kinematics_params_file" default="$(find ur_description)/config/ur5e/default_kinematics.yaml"/>
-  <xacro:arg name="a_physical_params_file" default="$(find ur_description)/config/ur5e/physical_parameters.yaml"/>
-  <xacro:arg name="a_visual_params_file" default="$(find ur_description)/config/ur5e/visual_parameters.yaml"/>
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" /> <!-- From 'ros-humble-ur-description' -->
+  <xacro:include filename="$(find mops_description)/urdf/dv_tools.urdf.xacro" />
 
-  <xacro:arg name="b_joint_limit_params_file" default="$(find ur_description)/config/ur5/joint_limits.yaml"/>
-  <xacro:arg name="b_kinematics_params_file" default="$(find ur_description)/config/ur5/default_kinematics.yaml"/>
-  <xacro:arg name="b_physical_params_file" default="$(find ur_description)/config/ur5/physical_parameters.yaml"/>
-  <xacro:arg name="b_visual_params_file" default="$(find ur_description)/config/ur5/visual_parameters.yaml"/>
+  <xacro:arg name="a_joint_limit_params_file" default="$(find ur_description)/config/ur5e/joint_limits.yaml" />
+  <xacro:arg name="a_kinematics_params_file" default="$(find ur_description)/config/ur5e/default_kinematics.yaml" />
+  <xacro:arg name="a_physical_params_file" default="$(find ur_description)/config/ur5e/physical_parameters.yaml" />
+  <xacro:arg name="a_visual_params_file" default="$(find ur_description)/config/ur5e/visual_parameters.yaml" />
+
+  <xacro:arg name="b_joint_limit_params_file" default="$(find ur_description)/config/ur5/joint_limits.yaml" />
+  <xacro:arg name="b_kinematics_params_file" default="$(find ur_description)/config/ur5/default_kinematics.yaml" />
+  <xacro:arg name="b_physical_params_file" default="$(find ur_description)/config/ur5/physical_parameters.yaml" />
+  <xacro:arg name="b_visual_params_file" default="$(find ur_description)/config/ur5/visual_parameters.yaml" />
 
   <!-- <xacro:arg name="world_calib_file" default="" /> -->
   <xacro:property name="world_calib_file_prop" value="$(arg world_calib_file)" />
@@ -35,27 +36,9 @@
   </xacro:ur_robot>
 
   <!-- A) LND 470006 tool -->
-  <xacro:lnd470006 prefix="a_tool_" />
-
-  <xacro:property name="a_tool_calib_file_prop" value="$(arg a_tool_calib_file)" />
-  <xacro:property name="a_tool_calib_data" value="${load_yaml(a_tool_calib_file_prop)}" />
-  <xacro:property name="a_robot_to_tool" value="${a_tool_calib_data['robot_to_tool']}" />
-
-  <!-- FIXME remove this intermediate link -->
-  <link name="a_flange_tool_fix" />
-
-  <joint name="a_ur_tool_joint_fix" type="fixed">
-    <parent link="a_ur_flange" />
-    <child link="a_flange_tool_fix" />
-    <origin xyz="0 0 0" rpy="${pi} 0 0" />
-  </joint>
-
-  <joint name="a_ur_tool_joint" type="fixed">
-    <parent link="a_flange_tool_fix" />
-    <child link="a_tool_tip_calib" />
-    <origin xyz="${' '.join(str(val) for val in a_robot_to_tool['xyz'])}"
-      rpy="${' '.join(str(val) for val in a_robot_to_tool['rpy'])}" />
-  </joint>
+  <xacro:dv_large_needle_driver_470006 prefix="a_tool_" parent="a_ur_flange">
+    <origin xyz="0.098 0 -0.053" rpy="0 ${pi/2} 0" /> <!-- FIXME -->
+  </xacro:dv_large_needle_driver_470006>
 
   <!-- B) UR5 robot -->
   <xacro:property name="world_to_b_base_link" value="${world_calib_data['world_to_b_base_link']}" />
@@ -73,38 +56,9 @@
   </xacro:ur_robot>
 
   <!-- B) LND 420006 tool -->
-  <xacro:lnd420006 prefix="b_tool_" />
-
-  <xacro:property name="b_tool_calib_file_prop" value="$(arg b_tool_calib_file)" />
-  <xacro:property name="b_tool_calib_data" value="${load_yaml(b_tool_calib_file_prop)}" />
-  <xacro:property name="b_robot_to_tool" value="${b_tool_calib_data['robot_to_tool']}" />
-
-  <!-- FIXME remove this intermediate link -->
-  <link name="b_flange_tool_fix" />
-
-  <joint name="b_ur_tool_joint_fix" type="fixed">
-    <parent link="b_ur_flange" />
-    <child link="b_flange_tool_fix" />
-    <origin xyz="0 0 0" rpy="${pi} 0 0" />
-  </joint>
-
-  <joint name="b_ur_tool_joint" type="fixed">
-    <parent link="b_flange_tool_fix" />
-    <child link="b_tool_tip_calib" />
-    <origin xyz="${' '.join(str(val) for val in b_robot_to_tool['xyz'])}"
-      rpy="${' '.join(str(val) for val in b_robot_to_tool['rpy'])}" />
-  </joint>
-
-  <!-- Stereo camera -->
-  <link name="stereo_optical" />
-  <xacro:property name="world_to_stereo_optical" value="${world_calib_data['world_to_stereo_optical']}" />
-
-  <joint name="world_stereo_optical_fixed" type="fixed">
-    <parent link="world" />
-    <child link="stereo_optical" />
-    <origin xyz="${' '.join(str(val) for val in world_to_stereo_optical['xyz'])}"
-      rpy="${' '.join(str(val) for val in world_to_stereo_optical['rpy'])}" />
-  </joint>
+  <xacro:dv_large_needle_driver_420006 prefix="b_tool_" parent="b_ur_flange">
+    <origin xyz="0.095 0 -0.053" rpy="0 0 0" /> <!-- FIXME -->
+  </xacro:dv_large_needle_driver_420006>
 
   <!-- Touch haptic devices -->
   <link name="touch_left_base" />

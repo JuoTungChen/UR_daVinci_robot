@@ -1,18 +1,10 @@
 <?xml version="1.0"?>
 
-<!-- da Vinci Large Needle Driver (LND) model 420006 (S/Si) and 470006 (X/Xi) -->
-<robot name="lnd" xmlns:xacro="http://ros.org/wiki/xacro">
+<!-- da Vinci Large Needle Driver (LND) models -->
+<robot name="dv_large_needle_driver" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <material name="tip_metallic_gray">
-    <color rgba="0.667 0.663 0.678 1.0" />
-  </material>
-  <material name="rod_dark_grey">
-    <color rgba="0.1 0.1 0.1 1.0" />
-  </material>
-
-  <xacro:macro name="lnd_tip" params="prefix" >
-    <link name="${prefix}tip_calib" />
-
+  <!-- End-effector of the LND -->
+  <xacro:macro name="dv_large_needle_driver_tip" params="prefix length" >
     <link name="${prefix}rotation">
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
@@ -64,9 +56,9 @@
     <link name="${prefix}tcp2" />
 
     <joint name="${prefix}roll" type="revolute">
-      <parent link="${prefix}tip_calib" />
+      <parent link="${prefix}base" />
       <child link="${prefix}rotation" />
-      <origin xyz="-0.018 0 0" rpy="${-pi} ${-pi/2} 0" />
+      <origin xyz="${length} 0 0" rpy="${-pi} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-260)}" upper="${radians(260)}" effort="0.3" velocity="${2*pi}" />
     </joint>
@@ -86,7 +78,7 @@
     </joint>
 
     <!-- This is not a real physical joint, but rather yaw0 = (yaw1 - yaw2) / 2,
-         ie. the TCP frame is at an angle between the grasper jaws. -->
+          ie. the TCP frame is at an angle between the grasper jaws. -->
     <joint name="${prefix}yaw0" type="revolute">
       <parent link="${prefix}jaw_hinge" />
       <child link="${prefix}jaw0" />
@@ -128,81 +120,101 @@
       <child link="${prefix}tcp2" />
       <origin xyz="0.009 0 0" rpy="0 0 0" />
     </joint>
-  </xacro:macro>
+
+  </xacro:macro> <!-- dv_large_needle_driver_tip -->
 
 
-  <xacro:macro name="lnd420006" params="prefix">
-    <xacro:lnd_tip prefix="${prefix}" />
 
-    <link name="${prefix}rod">
-      <visual>
-        <geometry>
-          <cylinder radius="0.004" length="0.457" />
-        </geometry>
-        <material name="rod_dark_grey" />
-      </visual>
-    </link>
-
-    <joint name="${prefix}rod_joint" type="fixed">
-      <parent link="${prefix}rotation" />
-      <child link="${prefix}rod" />
-      <origin xyz="0 0 ${-0.457/2 - 0.01}" rpy="0 0 0" />
-    </joint>
-
+  <!--  -->
+  <xacro:macro name="dv_large_needle_driver_housing_si" params="prefix" >
     <link name="${prefix}housing">
       <visual>
-        <origin xyz="-0.013 0 0" rpy="0 0 0" />
         <geometry>
           <box size="0.096 0.065 0.03" />
         </geometry>
-        <material name="housing_light_blue">
-          <color rgba="0.500 0.867 1.0 1.0" />
-        </material>
+        <material name="housing_light_blue" />
       </visual>
     </link>
 
-    <joint name="${prefix}housing_joint" type="fixed">
-      <parent link="${prefix}tip_calib" />
+    <joint name="${prefix}housing_fixed" type="fixed">
+      <parent link="${prefix}base" />
       <child link="${prefix}housing" />
-      <origin xyz="${-0.018 - 0.01 - 0.457} 0 0" rpy="0 0 0" />
+      <origin xyz="-0.025 0 0" rpy="0 0 0" /> <!-- FIXME -->
     </joint>
-  </xacro:macro>
+  </xacro:macro> <!-- dv_large_needle_driver_housing_si -->
 
-  <xacro:macro name="lnd470006" params="prefix">
-    <xacro:lnd_tip prefix="${prefix}" />
 
+
+  <xacro:macro name="dv_large_needle_driver_housing_xi" params="prefix" >
+    <link name="${prefix}housing">
+      <visual>
+        <geometry>
+          <box size="0.06 0.045 0.08" />
+        </geometry>
+        <material name="housing_white" />
+      </visual>
+    </link>
+
+    <joint name="${prefix}housing_fixed" type="fixed">
+      <parent link="${prefix}base" />
+      <child link="${prefix}housing" />
+      <origin xyz="-0.015 0 -0.019" rpy="0 0 0" /> <!-- FIXME -->
+    </joint>
+  </xacro:macro> <!-- dv_large_needle_driver_housing_xi -->
+
+
+
+  <xacro:macro name="dv_large_needle_driver_rod" params="prefix length" >
     <link name="${prefix}rod">
       <visual>
         <geometry>
-          <cylinder radius="0.004" length="0.5335" />
+          <cylinder radius="0.004" length="${length}" />
         </geometry>
         <material name="rod_dark_grey" />
       </visual>
     </link>
 
-    <joint name="${prefix}rod_joint" type="fixed">
+    <joint name="${prefix}rod_fixed" type="fixed">
       <parent link="${prefix}rotation" />
       <child link="${prefix}rod" />
-      <origin xyz="0 0 ${-0.5335/2 - 0.01}" rpy="0 0 0" />
+      <origin xyz="0 0 ${-length/2 - 0.01}" rpy="0 0 0" />
+    </joint>
+  </xacro:macro> <!-- dv_large_needle_driver_rod -->
+
+
+
+  <xacro:macro name="dv_large_needle_driver_420006" params="prefix parent *origin">
+    <xacro:property name="length" value="0.4670" />
+
+    <link name="${prefix}base" />
+
+    <joint name="${prefix}base_fixed" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent}" />
+      <child link="${prefix}base" />
     </joint>
 
-    <link name="${prefix}housing">
-      <visual>
-        <origin xyz="-0.015 0 -0.019" rpy="0 0 0" />
-        <geometry>
-          <box size="0.06 0.045 0.08" />
-        </geometry>
-        <material name="housing_white">
-          <color rgba="1.0 1.0 1.0 1.0" />
-        </material>
-      </visual>
-    </link>
+    <xacro:dv_large_needle_driver_tip prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_rod prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_housing_si prefix="${prefix}" />
+  </xacro:macro> <!-- dv_large_needle_driver_420006 -->
 
-    <joint name="${prefix}housing_joint" type="fixed">
-      <parent link="${prefix}tip_calib" />
-      <child link="${prefix}housing" />
-      <origin xyz="${-0.018 - 0.01 - 0.5335} 0 0" rpy="0 0 0" />
+
+
+  <xacro:macro name="dv_large_needle_driver_470006" params="prefix parent *origin">
+    <xacro:property name="length" value="0.5335" />
+
+    <link name="${prefix}base" />
+
+    <joint name="${prefix}base_fixed" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent}" />
+      <child link="${prefix}base" />
     </joint>
-  </xacro:macro>
+
+    <xacro:dv_large_needle_driver_tip prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_rod prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_housing_xi prefix="${prefix}" />
+  </xacro:macro> <!-- dv_large_needle_driver_470006 -->
 
 </robot>

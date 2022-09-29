@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<robot name="dv_tools" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find mops_description)/urdf/tool/materials.urdf.xacro" />
+  <xacro:include filename="$(find mops_description)/urdf/tool/dv_large_needle_driver.urdf.xacro" />
+</robot>
