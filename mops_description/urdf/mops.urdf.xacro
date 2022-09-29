@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot name="mops" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" /> <!-- From 'ros-humble-ur-description' -->
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" /> <!-- From 'ros-<distro>-ur-description' -->
   <xacro:include filename="$(find mops_description)/urdf/dv_tools.urdf.xacro" />
 
   <xacro:arg name="a_joint_limit_params_file" default="$(find ur_description)/config/ur5e/joint_limits.yaml" />
@@ -14,14 +14,9 @@
   <xacro:arg name="b_physical_params_file" default="$(find ur_description)/config/ur5/physical_parameters.yaml" />
   <xacro:arg name="b_visual_params_file" default="$(find ur_description)/config/ur5/visual_parameters.yaml" />
 
-  <!-- <xacro:arg name="world_calib_file" default="" /> -->
-  <xacro:property name="world_calib_file_prop" value="$(arg world_calib_file)" />
-  <xacro:property name="world_calib_data" value="${load_yaml(world_calib_file_prop)}" />
-
   <link name="world" />
 
   <!-- A) UR5e robot -->
-  <xacro:property name="world_to_a_base_link" value="${world_calib_data['world_to_a_base_link']}" />
   <xacro:ur_robot
       name="ur_a"
       prefix="a_ur_"
@@ -31,8 +26,7 @@
       physical_parameters_file="$(arg a_physical_params_file)"
       visual_parameters_file="$(arg a_visual_params_file)"
       transmission_hw_interface="">
-    <origin xyz="${' '.join(str(val) for val in world_to_a_base_link['xyz'])}"
-        rpy="${' '.join(str(val) for val in world_to_a_base_link['rpy'])}" />
+    <origin xyz="-0.8 0.4 0.2" rpy="0 0 ${pi/2}" />
   </xacro:ur_robot>
 
   <!-- A) LND 470006 tool -->
@@ -41,7 +35,6 @@
   </xacro:dv_large_needle_driver_470006>
 
   <!-- B) UR5 robot -->
-  <xacro:property name="world_to_b_base_link" value="${world_calib_data['world_to_b_base_link']}" />
   <xacro:ur_robot
       name="ur_b"
       prefix="b_ur_"
@@ -51,8 +44,7 @@
       physical_parameters_file="$(arg b_physical_params_file)"
       visual_parameters_file="$(arg b_visual_params_file)"
       transmission_hw_interface="">
-    <origin xyz="${' '.join(str(val) for val in world_to_b_base_link['xyz'])}"
-        rpy="${' '.join(str(val) for val in world_to_b_base_link['rpy'])}" />
+    <origin xyz="-0.8 -0.4 0.2" rpy="0 0 ${pi/2}" />
   </xacro:ur_robot>
 
   <!-- B) LND 420006 tool -->

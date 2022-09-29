@@ -6,11 +6,11 @@ import xacro
 
 def generate_mops_urdf():
     xacro_path = get_package_share_path('mops_description') / 'urdf' / 'mops.urdf.xacro'
-    bringup_config_path = get_package_share_path('mops_bringup') / 'config'
-    mappings = {
-        'world_calib_file': str(bringup_config_path / 'world_calib.yaml'),
-    }
-    doc = xacro.process_file(xacro_path, mappings=mappings)
+    # bringup_config_path = get_package_share_path('mops_bringup') / 'config'
+    # mappings = {
+    #     'world_calib_file': str(bringup_config_path / 'world_calib.yaml'),
+    # }
+    doc = xacro.process_file(xacro_path)  # mappings=mappings
     robot_description = doc.toxml()  # doc.toprettyxml(indent='  ')
     return robot_description
 
