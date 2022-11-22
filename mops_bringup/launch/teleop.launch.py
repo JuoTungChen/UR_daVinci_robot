@@ -41,12 +41,34 @@ def generate_launch_description():
                     namespace='/a/ur',
                     parameters=[{
                         'hostname': 'ur-20185500393',
+                        'prefix': 'a_ur_',
+                    }],
+                    # extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+                ComposableNode(
+                    package='ur_rtde_ros',
+                    plugin='ur_rtde_ros::URControllerNode',
+                    name='ur_controller',
+                    namespace='/a/ur',
+                    parameters=[{
+                        'hostname': 'ur-20185500393',
                         'servo_rate_hz': 125.0,
                         'prefix': 'a_ur_',
                     }],
                     remappings=[
                         ('teach_mode_enable', '/pedal/left'),
                     ],
+                    # extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+                ComposableNode(
+                    package='ur_rtde_ros',
+                    plugin='ur_rtde_ros::URReceiverNode',
+                    name='ur_receiver',
+                    namespace='/b/ur',
+                    parameters=[{
+                        'hostname': 'ur-2017356413',
+                        'prefix': 'b_ur_',
+                    }],
                     # extra_arguments=[{'use_intra_process_comms': True}],
                 ),
                 ComposableNode(
