@@ -103,6 +103,11 @@ public:
             if (joint.second->limits)
                 joint_limits_[joint.second->name] = *joint.second->limits;
 
+
+        for (const auto& e : joint_limits_)
+            RCLCPP_INFO_STREAM(get_logger(), e.first << " :-> " << "(" << e.second.lower << ", " << e.second.upper << ")");
+
+
         // Vector of pointers to the movable joints in the kinematic chain
         const auto movable_joints = [&]() {
             std::vector<const KDL::Joint*> segments;
@@ -164,10 +169,10 @@ public:
         q_current_by_name_.insert({tool_joint_names_[2], &q_yaw_dummy_[0]});
         q_current_by_name_.insert({tool_joint_names_[3], &q_yaw_dummy_[1]});
 
-        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint", rclcpp::ServicesQoS());
-        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint", rclcpp::SensorDataQoS());
-        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint", rclcpp::ServicesQoS());
-        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", rclcpp::SensorDataQoS());
+        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint_default", rclcpp::ServicesQoS());
+        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint_default", rclcpp::SensorDataQoS());
+        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint_default", rclcpp::ServicesQoS());
+        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint_default", rclcpp::SensorDataQoS());
 
         subscribers_ = {
             create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::SensorDataQoS(),
