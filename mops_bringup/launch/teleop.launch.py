@@ -24,7 +24,7 @@ def generate_launch_description():
             name='component_manager',
             namespace='',
             package='rclcpp_components',
-            executable='component_container',
+            executable='component_container_mt',
             # prefix=['gdbserver localhost:3000'],
             composable_node_descriptions=[
                 # ComposableNode(
