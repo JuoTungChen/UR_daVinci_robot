@@ -103,11 +103,6 @@ public:
             if (joint.second->limits)
                 joint_limits_[joint.second->name] = *joint.second->limits;
 
-
-        for (const auto& e : joint_limits_)
-            RCLCPP_INFO_STREAM(get_logger(), e.first << " :-> " << "(" << e.second.lower << ", " << e.second.upper << ")");
-
-
         // Vector of pointers to the movable joints in the kinematic chain
         const auto movable_joints = [&]() {
             std::vector<const KDL::Joint*> segments;
