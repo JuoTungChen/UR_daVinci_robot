@@ -1,5 +1,6 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch_ros.actions import Node, ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
 from ament_index_python.packages import get_package_share_path
 import xacro
 
@@ -15,22 +16,67 @@ def generate_launch_description():
     robot_description = generate_mops_urdf()
 
     return LaunchDescription([
+        ComposableNodeContainer(
+            name='component_manager',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container',
+            # prefix=['gdbserver localhost:3000'],
+            composable_node_descriptions=[
+                # ComposableNode(
+                #     package='robot_state_publisher',
+                #     plugin='robot_state_publisher::RobotStatePublisher',
+                #     name='robot_state_publisher',
+                #     parameters=[{'robot_description': robot_description}],
+                #     # extra_arguments=[{'use_intra_process_comms': True}],
+                # ),
+                ComposableNode(
+                    package='ur_rtde_ros',
+                    plugin='ur_rtde_ros::URReceiverNode',
+                    name='ur_receiver',
+                    namespace='/a/ur',
+                    parameters=[{
+                        'hostname': 'ursim-1',
+                        'servo_rate_hz': 500.0,
+                        'prefix': 'a_ur_',
+                    }],
+                    remappings=[
+                        ('teach_mode_enable', '/pedal/left'),
+                    ],
+                    # extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+                ComposableNode(
+                    package='ur_rtde_ros',
+                    plugin='ur_rtde_ros::URControllerNode',
+                    name='ur_controller',
+                    namespace='/b/ur',
+                    parameters=[{
+                        'hostname': 'ursim-2',
+                        'servo_rate_hz': 125.0,
+                        'prefix': 'b_ur_',
+                    }],
+                    remappings=[
+                        ('teach_mode_enable', '/pedal/left'),
+                    ],
+                    # extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+                ComposableNode(
+                    package='touch_control',
+                    plugin='touch_control::TouchControlNode',
+                    name='touch_control',
+                    namespace='touch',
+                    parameters=[{
+                        'device_names': ['left', 'right'],
+                        'prefixes': ['touch_left_', 'touch_right_'],
+                    }],
+                    # extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+            ],
+            output='screen',
+        ),
         Node(package='mops_state_publisher',
             executable='mops_state_publisher',
             parameters=[{'robot_description': robot_description}],
-        ),
-        #  Arm A: UR5e + EUA2 (X/Xi tool)
-        Node(package='ur_rtde_ros',
-            executable='ur_control',
-            namespace='/a/ur',
-            parameters=[{
-                'hostname': 'ursim-1',
-                'servo_rate_hz': 125.0,
-                'prefix': 'a_ur_',
-            }],
-            remappings=[
-                ('teach_mode_enable', '/pedal/left'),
-            ],
         ),
         Node(package='eua_control',
             executable='controller',
@@ -56,7 +102,7 @@ def generate_launch_description():
             executable='teleop',
             namespace='/a',
             parameters=[{
-                'publish_rate': 125.0,
+                'publish_rate': 500.0,
                 'ur_prefix': 'a_ur_',
                 'haptic_prefix': 'touch_right_',
                 'grasp_rate': 1.5708,
@@ -66,19 +112,6 @@ def generate_launch_description():
                 ('haptic_buttons', '/touch/left/button_event'),
                 ('clutch_engaged', '/pedal/right'),
                 ('ee_state_desired', 'servo_joint_ik'),
-            ],
-        ),
-        # Arm B: UR5 + EUA1 (S/Si tool)
-        Node(package='ur_rtde_ros',
-            executable='ur_control',
-            namespace='/b/ur',
-            parameters=[{
-                'hostname': 'ursim-2',
-                'servo_rate_hz': 125.0,
-                'prefix': 'b_ur_',
-            }],
-            remappings=[
-                ('teach_mode_enable', '/pedal/left'),
             ],
         ),
         Node(package='eua_control',
@@ -117,25 +150,8 @@ def generate_launch_description():
                 ('ee_state_desired', 'servo_joint_ik'),
             ],
         ),
-        # HID devices
         Node(package='mops_teleop',
             executable='foot_control',
             namespace='/pedal',
-        ),
-        Node(package='touch_control',
-            executable='touch_control',
-            namespace='/touch/left',
-            parameters=[{
-                'device_name': 'left',
-                'prefix': 'touch_left_',
-            }],
-        ),
-        Node(package='touch_control',
-            executable='touch_control',
-            namespace='/touch/right',
-            parameters=[{
-                'device_name': 'right',
-                'prefix': 'touch_right_',
-            }],
         ),
     ])
