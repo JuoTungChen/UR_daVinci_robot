@@ -17,11 +17,12 @@ def generate_launch_description():
 
     return LaunchDescription([
         ComposableNodeContainer(
-            name='component_manager',
+            name='container1',
             namespace='',
             package='rclcpp_components',
-            executable='component_container_mt',
+            executable='component_container',
             # prefix=['gdbserver localhost:3000'],
+            output='screen',
             composable_node_descriptions=[
                 # ComposableNode(
                 #     package='robot_state_publisher',
@@ -51,11 +52,18 @@ def generate_launch_description():
                         'prefix': 'a_ur_',
                         'servo_rate_hz': 125.0,
                     }],
-                    remappings=[
-                        ('teach_mode_enable', '/pedal/left'),
-                    ],
                     # extra_arguments=[{'use_intra_process_comms': True}],
                 ),
+            ]
+        ),
+        ComposableNodeContainer(
+            name='container2',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container',
+            # prefix=['gdbserver localhost:3000'],
+            output='screen',
+            composable_node_descriptions=[
                 ComposableNode(
                     package='ur_rtde_ros',
                     plugin='ur_rtde_ros::URReceiverNode',
@@ -77,11 +85,18 @@ def generate_launch_description():
                         'prefix': 'b_ur_',
                         'servo_rate_hz': 125.0,
                     }],
-                    remappings=[
-                        ('teach_mode_enable', '/pedal/right'),
-                    ],
                     # extra_arguments=[{'use_intra_process_comms': True}],
                 ),
+            ]
+        ),
+        ComposableNodeContainer(
+            name='container3',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container',
+            # prefix=['gdbserver localhost:3000'],
+            output='screen',
+            composable_node_descriptions=[
                 ComposableNode(
                     package='touch_control',
                     plugin='touch_control::TouchControlNode',
@@ -94,7 +109,6 @@ def generate_launch_description():
                     # extra_arguments=[{'use_intra_process_comms': True}],
                 ),
             ],
-            output='screen',
         ),
         Node(package='mops_state_publisher',
             executable='mops_state_publisher',
