@@ -49,7 +49,7 @@ def generate_launch_description():
                     parameters=[{
                         'hostname': 'ursim-1',
                         'prefix': 'a_ur_',
-                        'servo_rate_hz': 500.0,
+                        'servo_rate_hz': 125.0,
                     }],
                     remappings=[
                         ('teach_mode_enable', '/pedal/left'),
@@ -124,7 +124,7 @@ def generate_launch_description():
             executable='teleop',
             namespace='/a',
             parameters=[{
-                'publish_rate': 500.0,
+                'publish_rate': 125.0,
                 'ur_prefix': 'a_ur_',
                 'haptic_prefix': 'touch_right_',
                 'grasp_rate': 1.5708,

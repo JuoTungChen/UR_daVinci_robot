@@ -166,8 +166,8 @@ public:
 
         pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint_default", rclcpp::ServicesQoS());
         pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint_default", rclcpp::SensorDataQoS());
-        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint_default", rclcpp::ServicesQoS());
-        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint_default", rclcpp::SensorDataQoS());
+        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint", rclcpp::ServicesQoS());
+        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", rclcpp::SensorDataQoS());
 
         subscribers_ = {
             create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::SensorDataQoS(),
