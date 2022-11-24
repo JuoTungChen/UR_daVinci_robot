@@ -13,7 +13,7 @@ find_package(tf2_ros REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 
 add_executable(teleop src/teleop.cpp)
-ament_target_dependencies(teleop Eigen3 tf2_ros geometry_msgs mops_msgs std_msgs touch_msgs mops_common)
+ament_target_dependencies(teleop rclcpp Eigen3 tf2_ros geometry_msgs mops_msgs std_msgs touch_msgs mops_common)
 target_compile_features(teleop PRIVATE cxx_std_17)
 target_compile_options(teleop PRIVATE -Wall -Wextra)
 
