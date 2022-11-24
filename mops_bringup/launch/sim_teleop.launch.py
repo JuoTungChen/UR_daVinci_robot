@@ -37,7 +37,7 @@ def generate_launch_description():
                     name='ur_receiver',
                     namespace='/a/ur',
                     parameters=[{
-                        'hostname': 'ursim-1',
+                        'hostname': '192.168.122.47',
                         'prefix': 'a_ur_',
                     }],
                     # extra_arguments=[{'use_intra_process_comms': True}],
@@ -48,7 +48,7 @@ def generate_launch_description():
                     name='ur_controller',
                     namespace='/a/ur',
                     parameters=[{
-                        'hostname': 'ursim-1',
+                        'hostname': '192.168.122.47',
                         'prefix': 'a_ur_',
                         'servo_rate_hz': 125.0,
                     }],
@@ -70,7 +70,7 @@ def generate_launch_description():
                     name='ur_receiver',
                     namespace='/b/ur',
                     parameters=[{
-                        'hostname': 'ursim-2',
+                        'hostname': '192.168.122.120',
                         'prefix': 'b_ur_',
                     }],
                     # extra_arguments=[{'use_intra_process_comms': True}],
@@ -81,7 +81,7 @@ def generate_launch_description():
                     name='ur_controller',
                     namespace='/b/ur',
                     parameters=[{
-                        'hostname': 'ursim-2',
+                        'hostname': '192.168.122.120',
                         'prefix': 'b_ur_',
                         'servo_rate_hz': 125.0,
                     }],
@@ -103,8 +103,10 @@ def generate_launch_description():
                     name='touch_control',
                     namespace='touch',
                     parameters=[{
-                        'device_names': ['left', 'right'],
-                        'prefixes': ['touch_left_', 'touch_right_'],
+                        # 'device_names': ['left', 'right'],
+                        # 'prefixes': ['touch_left_', 'touch_right_'],
+                        'device_names': [''],
+                        'prefixes': ['touch_right_'],
                     }],
                     # extra_arguments=[{'use_intra_process_comms': True}],
                 ),
