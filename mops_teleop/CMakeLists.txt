@@ -3,6 +3,7 @@ project(mops_teleop)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(mops_common REQUIRED)
@@ -12,10 +13,11 @@ find_package(std_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 
-add_executable(teleop src/teleop.cpp)
-ament_target_dependencies(teleop rclcpp Eigen3 tf2_ros geometry_msgs mops_msgs std_msgs touch_msgs mops_common)
+add_library(teleop SHARED src/teleop.cpp)
+ament_target_dependencies(teleop rclcpp rclcpp_components Eigen3 tf2_ros geometry_msgs mops_msgs std_msgs touch_msgs mops_common)
 target_compile_features(teleop PRIVATE cxx_std_17)
 target_compile_options(teleop PRIVATE -Wall -Wextra)
+rclcpp_components_register_nodes(teleop "mops_teleop::TeleopNode")
 
 set(CMAKE_AUTOMOC ON)
 add_executable(foot_control src/footcontrol.cpp)
@@ -25,7 +27,14 @@ target_compile_features(foot_control PRIVATE cxx_std_17)
 target_compile_options(foot_control PRIVATE -Wall -Wextra)
 
 install(
-  TARGETS foot_control teleop
+  TARGETS teleop
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(
+  TARGETS foot_control
   DESTINATION lib/${PROJECT_NAME}
 )
 
