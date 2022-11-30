@@ -21,6 +21,8 @@
 
 using namespace std::string_literals;
 
+namespace mops_control {
+
 struct Init
 {
     bool ur;
@@ -71,7 +73,8 @@ auto split_joint_state(const sensor_msgs::msg::JointState& m)
 class MopsControlNode : public rclcpp::Node
 {
 public:
-    MopsControlNode() : rclcpp::Node("mops_control")
+    explicit MopsControlNode(const rclcpp::NodeOptions& options)
+        : rclcpp::Node("mops_control", options)
     {
         auto xml = declare_parameter("robot_description", ""s);
 
@@ -171,26 +174,26 @@ public:
 
         subscribers_ = {
             create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::QoS(1).best_effort(),
-                [this](sensor_msgs::msg::JointState m) {
+                [this](sensor_msgs::msg::JointState::UniquePtr m) {
                     // Cache current UR joint angles
-                    for (auto [n, q] : ranges::views::zip(m.name, m.position))
+                    for (auto [n, q] : ranges::views::zip(m->name, m->position))
                         *q_current_by_name_[n] = q;
 
                     init_.ur = true;
                 }),
             create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::QoS(1).best_effort(),
-                [this, tool_prefix](sensor_msgs::msg::JointState m) {
-                    append_yaw0(tool_prefix, m);
+                [this, tool_prefix](sensor_msgs::msg::JointState::UniquePtr m) {
+                    append_yaw0(tool_prefix, *m);
 
                     // Cache current tool joint angles
-                    for (auto [n, q] : ranges::views::zip(m.name, m.position))
+                    for (auto [n, q] : ranges::views::zip(m->name, m->position))
                         *q_current_by_name_[n] = q;
 
                     init_.tool = true;
                 }),
             create_subscription<sensor_msgs::msg::JointState>("servo_joint", rclcpp::QoS(1).best_effort(),
-                [this](const sensor_msgs::msg::JointState& m) {
-                    auto [m_ur, m_tool] = split_joint_state(m);
+                [this](sensor_msgs::msg::JointState::UniquePtr m) {
+                    auto [m_ur, m_tool] = split_joint_state(*m);
 
                     if (!m_ur.name.empty())
                         pub_robot_servo_joint_->publish(m_ur);
@@ -199,11 +202,11 @@ public:
                         pub_tool_servo_joint_->publish(m_tool);
                 }),
             create_subscription<mops_msgs::msg::ToolEndEffectorState>("servo_joint_ik", rclcpp::QoS(1).best_effort(),
-                [this](const mops_msgs::msg::ToolEndEffectorState& m) {
+                [this](mops_msgs::msg::ToolEndEffectorState::UniquePtr m) {
                     if (!init_.ur || !init_.tool)
                         return;
 
-                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m.pose), m.grasper_angle);
+                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m->pose), m->grasper_angle);
 
                     if (sol) {
                         pub_robot_servo_joint_->publish(sol->first);
@@ -211,8 +214,8 @@ public:
                     }
                 }),
             create_subscription<sensor_msgs::msg::JointState>("move_joint", 1,
-                [this](const sensor_msgs::msg::JointState& m) {
-                    auto [m_ur, m_tool] = split_joint_state(m);
+                [this](sensor_msgs::msg::JointState::UniquePtr m) {
+                    auto [m_ur, m_tool] = split_joint_state(*m);
 
                     if (!m_ur.name.empty())
                         pub_robot_move_joint_->publish(m_ur);
@@ -221,11 +224,11 @@ public:
                         pub_tool_move_joint_->publish(m_tool);
                 }),
             create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>("move_joint_ik", 1,
-                [this](const mops_msgs::msg::ToolEndEffectorStateStamped& m) {
+                [this](mops_msgs::msg::ToolEndEffectorStateStamped::UniquePtr m) {
                     if (!init_.ur || !init_.tool)
                         return;
 
-                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m.ee.pose), m.ee.grasper_angle);
+                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m->ee.pose), m->ee.grasper_angle);
 
                     if (sol) {
                         pub_robot_move_joint_->publish(sol->first);
@@ -262,7 +265,7 @@ public:
 
         // The first 6 elements of the solution vector is the robot configuration
         sensor_msgs::msg::JointState m_robot;
-        m_robot.header.stamp = get_clock()->now();
+        m_robot.header.stamp = now();
         // FIXME joint names
         m_robot.position |= ranges::actions::push_back(ranges::span{q_desired_.data.data(), 6});
 
@@ -272,8 +275,8 @@ public:
         m_tool.name = tool_joint_names_;
         m_tool.position.push_back(q_desired_(6)); // roll
         m_tool.position.push_back(q_desired_(7)); // pitch (wrist)
-        m_tool.position.push_back(q_yaw1);       // yaw1 (jaw1)
-        m_tool.position.push_back(q_yaw2);       // yaw2 (jaw2)
+        m_tool.position.push_back(q_yaw1);        // yaw1 (jaw1)
+        m_tool.position.push_back(q_yaw2);        // yaw2 (jaw2)
 
         return std::make_pair(m_robot, m_tool);
     }
@@ -305,11 +308,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_tool_servo_joint_;
 };
 
-int main(int argc, char* argv[])
-{
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<MopsControlNode>();
-    rclcpp::spin(node);
-    rclcpp::shutdown();
-    return EXIT_SUCCESS;
-}
+} // namespace mops_control
+
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(mops_control::MopsControlNode)
