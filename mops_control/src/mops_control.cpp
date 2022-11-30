@@ -164,13 +164,13 @@ public:
         q_current_by_name_.insert({tool_joint_names_[2], &q_yaw_dummy_[0]});
         q_current_by_name_.insert({tool_joint_names_[3], &q_yaw_dummy_[1]});
 
-        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint_default", rclcpp::ServicesQoS());
-        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint_default", rclcpp::SensorDataQoS());
-        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint", rclcpp::ServicesQoS());
-        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", rclcpp::SensorDataQoS());
+        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint_default", 1);
+        pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint", 1);
+        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint_default", 1);
+        pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", 1);
 
         subscribers_ = {
-            create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::SensorDataQoS(),
+            create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::QoS(1).best_effort(),
                 [this](sensor_msgs::msg::JointState m) {
                     // Cache current UR joint angles
                     for (auto [n, q] : ranges::views::zip(m.name, m.position))
@@ -178,7 +178,7 @@ public:
 
                     init_.ur = true;
                 }),
-            create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::SensorDataQoS(),
+            create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::QoS(1).best_effort(),
                 [this, tool_prefix](sensor_msgs::msg::JointState m) {
                     append_yaw0(tool_prefix, m);
 
@@ -188,7 +188,7 @@ public:
 
                     init_.tool = true;
                 }),
-            create_subscription<sensor_msgs::msg::JointState>("servo_joint", rclcpp::SensorDataQoS(),
+            create_subscription<sensor_msgs::msg::JointState>("servo_joint", rclcpp::QoS(1).best_effort(),
                 [this](const sensor_msgs::msg::JointState& m) {
                     auto [m_ur, m_tool] = split_joint_state(m);
 
@@ -198,17 +198,7 @@ public:
                     if (!m_tool.name.empty())
                         pub_tool_servo_joint_->publish(m_tool);
                 }),
-            create_subscription<sensor_msgs::msg::JointState>("move_joint", rclcpp::ServicesQoS(),
-                [this](const sensor_msgs::msg::JointState& m) {
-                    auto [m_ur, m_tool] = split_joint_state(m);
-
-                    if (!m_ur.name.empty())
-                        pub_robot_move_joint_->publish(m_ur);
-
-                    if (!m_tool.name.empty())
-                        pub_tool_move_joint_->publish(m_tool);
-                }),
-            create_subscription<mops_msgs::msg::ToolEndEffectorState>("servo_joint_ik", rclcpp::SensorDataQoS(),
+            create_subscription<mops_msgs::msg::ToolEndEffectorState>("servo_joint_ik", rclcpp::QoS(1).best_effort(),
                 [this](const mops_msgs::msg::ToolEndEffectorState& m) {
                     if (!init_.ur || !init_.tool)
                         return;
@@ -220,7 +210,17 @@ public:
                         pub_tool_servo_joint_->publish(sol->second);
                     }
                 }),
-            create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>("move_joint_ik", rclcpp::ServicesQoS(),
+            create_subscription<sensor_msgs::msg::JointState>("move_joint", 1,
+                [this](const sensor_msgs::msg::JointState& m) {
+                    auto [m_ur, m_tool] = split_joint_state(m);
+
+                    if (!m_ur.name.empty())
+                        pub_robot_move_joint_->publish(m_ur);
+
+                    if (!m_tool.name.empty())
+                        pub_tool_move_joint_->publish(m_tool);
+                }),
+            create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>("move_joint_ik", 1,
                 [this](const mops_msgs::msg::ToolEndEffectorStateStamped& m) {
                     if (!init_.ur || !init_.tool)
                         return;

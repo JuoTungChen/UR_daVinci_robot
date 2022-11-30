@@ -161,11 +161,17 @@ class EUAController(rclpy.node.Node):
                     dev.write_param_single('ccw_angle_limit', 4095, raw=True)
 
 
-        self.pub_joint = self.create_publisher(sensor_msgs.msg.JointState, 'joint_states', rclpy.qos.qos_profile_sensor_data)
-        self.pub_servo = self.create_publisher(sensor_msgs.msg.JointState, 'servo_states', rclpy.qos.qos_profile_sensor_data) if self.declare_parameter('publish_servo_states', False).value else None
+        self.pub_joint = self.create_publisher(sensor_msgs.msg.JointState, 'joint_states', 1)
+        self.pub_servo = self.create_publisher(sensor_msgs.msg.JointState, 'servo_states', 1) if self.declare_parameter('publish_servo_states', False).value else None
         self.subscribers = [
-            self.create_subscription(sensor_msgs.msg.JointState, 'move_joint', self.init_trajectory, rclpy.qos.qos_profile_services_default),
-            self.create_subscription(sensor_msgs.msg.JointState, 'servo_joint', self.set_joint_goal_direct, rclpy.qos.qos_profile_sensor_data),
+            self.create_subscription(sensor_msgs.msg.JointState, 'move_joint', self.init_trajectory, 1),
+            self.create_subscription(sensor_msgs.msg.JointState, 'servo_joint', self.set_joint_goal_direct,
+                rclpy.qos.QoSProfile(
+                    reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
+                    history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
+                    depth=1
+                )
+            ),
             self.create_service(std_srvs.srv.Trigger, 'calibrate', self.calibrate)
         ]
 

@@ -63,9 +63,10 @@ int main(int argc, char* argv[])
     std::list<rclcpp::SubscriptionBase::SharedPtr> subs{
         node->create_subscription<std_msgs::msg::Bool>(
             "clutch_engaged",
-            rclcpp::QoS(rclcpp::KeepLast(10)).transient_local(),
+            rclcpp::QoS(10).transient_local(),
              [&](const std_msgs::msg::Bool& m) {
                 // Initially: desired <- current
+
                 if (m.data) {
                     t_robotbase_robottcp_desired = t_robotbase_robottcp_current;
                     // FIXME: this is not nice because grasper angle computed
@@ -78,7 +79,7 @@ int main(int argc, char* argv[])
             }),
         node->create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>(
             "ee_state_current",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](const mops_msgs::msg::ToolEndEffectorStateStamped& m) {
                 // Cache the most recent end-effector state computed from forward kinematics
                 t_robotbase_robottcp_current = convert_to<Eigen::Isometry3d>(m.ee.pose);
@@ -88,7 +89,7 @@ int main(int argc, char* argv[])
             }),
         node->create_subscription<geometry_msgs::msg::PoseStamped>(
             "haptic_pose",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](const geometry_msgs::msg::PoseStamped& m) {
                 t_robotbase_haptictcp_last = std::move(t_robotbase_haptictcp_current);
 
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
             }),
         node->create_subscription<touch_msgs::msg::ButtonEvent>(
             "haptic_buttons",
-            rclcpp::ServicesQoS(),
+            10,
             [&](const touch_msgs::msg::ButtonEvent& m) {
                 if (m.button == touch_msgs::msg::ButtonEvent::BUTTON_GRAY)
                     buttons[0] = (m.event == touch_msgs::msg::ButtonEvent::EVENT_PRESSED);

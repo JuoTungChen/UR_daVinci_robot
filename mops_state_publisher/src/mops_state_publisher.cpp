@@ -222,7 +222,7 @@ public:
         q_current_index_.insert({id + "_tool_yaw1", &q_current_yaw_[0]});
         q_current_index_.insert({id + "_tool_yaw2", &q_current_yaw_[1]});
 
-        pub_ = node->create_publisher<mops_msgs::msg::ToolEndEffectorStateStamped>("/" + id + "/ee_state_current", rclcpp::SensorDataQoS());
+        pub_ = node->create_publisher<mops_msgs::msg::ToolEndEffectorStateStamped>("/" + id + "/ee_state_current", 1);
     }
 
     void updateJointPositions(const sensor_msgs::msg::JointState& m)
@@ -306,14 +306,14 @@ int main(int argc, char* argv[])
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers {
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/a/ur/joint_states",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](const sensor_msgs::msg::JointState& m) {
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_a.updateJointPositions(m);
             }),
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/a/tool/joint_states",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](sensor_msgs::msg::JointState m) {
                 appendYaw0("a_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
@@ -321,14 +321,14 @@ int main(int argc, char* argv[])
             }),
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/b/ur/joint_states",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](const sensor_msgs::msg::JointState& m) {
                 robot_state_publisher.updateJointPositions(m);
                 pose_pub_b.updateJointPositions(m);
             }),
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/b/tool/joint_states",
-            rclcpp::SensorDataQoS(),
+            rclcpp::QoS(1).best_effort(),
             [&](sensor_msgs::msg::JointState m) {
                 appendYaw0("b_tool_", m);
                 robot_state_publisher.updateJointPositions(m);
