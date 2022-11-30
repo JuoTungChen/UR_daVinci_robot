@@ -22,7 +22,7 @@ template<typename T>
 auto sec_to_dur(T seconds) {
     return std::chrono::duration<T, std::ratio<1>>(seconds);
 }
-rclcpp::Clock x;
+
 class TeleopNode : public rclcpp::Node
 {
 public:
@@ -65,7 +65,7 @@ public:
         subscribers_ = {
             create_subscription<std_msgs::msg::Bool>(
                 "clutch_engaged",
-                rclcpp::QoS(10).transient_local(),
+                10,
                  [this](std_msgs::msg::Bool::UniquePtr m) {
                     // Initially: desired <- current
 
@@ -139,10 +139,10 @@ public:
                     grasp_desired_ += grasp_rate_ * dt;
                 }
 
-                mops_msgs::msg::ToolEndEffectorState m;
-                m.pose = convert_to<geometry_msgs::msg::Pose>(t_robotbase_robottcp_desired_);
-                m.grasper_angle = grasp_desired_;
-                pub_ee_desired_->publish(m);
+                auto m = std::make_unique<mops_msgs::msg::ToolEndEffectorState>();
+                m->pose = convert_to<geometry_msgs::msg::Pose>(t_robotbase_robottcp_desired_);
+                m->grasper_angle = grasp_desired_;
+                pub_ee_desired_->publish(std::move(m));
             }
         );
     }
