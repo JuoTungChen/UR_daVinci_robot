@@ -131,7 +131,7 @@ public:
 
         stamp_prev_ = now();
 
-        auto timer = create_wall_timer(
+        timer_ = create_wall_timer(
             sec_to_dur(1.0 / declare_parameter("publish_rate", 125.0)),
             [this]() {
                 if (!init_current_ || !clutch_engaged_)
