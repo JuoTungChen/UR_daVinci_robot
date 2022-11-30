@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;
@@ -70,6 +71,8 @@ public:
                     // Initially: desired <- current
 
                     if (m->data) {
+                        std::lock_guard<std::mutex> lock(desired_state_mutex_);
+                        std::lock_guard<std::mutex> lock2(current_state_mutex_);
                         t_robotbase_robottcp_desired_ = t_robotbase_robottcp_current_;
                         // FIXME: this is not nice because grasper angle computed
                         // from kinematics is quite inaccurate
@@ -85,6 +88,7 @@ public:
                 rclcpp::QoS(1).best_effort(),
                 [this](mops_msgs::msg::ToolEndEffectorStateStamped::UniquePtr m) {
                     // Cache the most recent end-effector state computed from forward kinematics
+                    std::lock_guard<std::mutex> lock(current_state_mutex_);
                     t_robotbase_robottcp_current_ = convert_to<Eigen::Isometry3d>(m->ee.pose);
                     grasp_current_ = m->ee.grasper_angle;
                     init_current_ = true;
@@ -105,6 +109,7 @@ public:
                         Eigen::Isometry3d t_incr = t_robotbase_haptictcp_last_.inverse() * t_robotbase_haptictcp_current_;
 
                         // "added to" the desired robot TCP pose
+                        std::lock_guard<std::mutex> lock(desired_state_mutex_);
                         t_robotbase_robottcp_desired_ = t_robotbase_robottcp_desired_ * t_incr;
                     }
                 }
@@ -113,10 +118,13 @@ public:
                 "haptic_buttons",
                 10,
                 [this](touch_msgs::msg::ButtonEvent::UniquePtr m) {
-                    if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_GRAY)
+                    if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_GRAY) {
+                        std::lock_guard<std::mutex> lock(desired_state_mutex_);
                         buttons_[0] = (m->event == touch_msgs::msg::ButtonEvent::EVENT_PRESSED);
-                    else if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_WHITE)
+                    } else if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_WHITE) {
+                        std::lock_guard<std::mutex> lock(desired_state_mutex_);
                         buttons_[1] = (m->event == touch_msgs::msg::ButtonEvent::EVENT_PRESSED);
+                    }
                 }
             ),
         };
@@ -133,23 +141,29 @@ public:
                 auto dt = (stamp_now - stamp_prev_).seconds();
                 stamp_prev_ = stamp_now;
 
-                if (buttons_[0] && !buttons_[1]) {
-                    grasp_desired_ -= grasp_rate_ * dt;
-                } else if (buttons_[1] && !buttons_[0]) {
-                    grasp_desired_ += grasp_rate_ * dt;
+                mops_msgs::msg::ToolEndEffectorState m;
+
+                {
+                    std::lock_guard<std::mutex> lock(desired_state_mutex_);
+
+                    if (buttons_[0] && !buttons_[1]) {
+                        grasp_desired_ -= grasp_rate_ * dt;
+                    } else if (buttons_[1] && !buttons_[0]) {
+                        grasp_desired_ += grasp_rate_ * dt;
+                    }
+
+                    m.pose = convert_to<geometry_msgs::msg::Pose>(t_robotbase_robottcp_desired_);
+                    m.grasper_angle = grasp_desired_;
                 }
 
-                mops_msgs::msg::ToolEndEffectorState m;
-                m.pose = convert_to<geometry_msgs::msg::Pose>(t_robotbase_robottcp_desired_);
-                m.grasper_angle = grasp_desired_;
                 pub_ee_desired_->publish(m);
             }
         );
     }
 
 private:
-    bool init_current_;
-    bool clutch_engaged_;
+    std::atomic<bool> init_current_;
+    std::atomic<bool> clutch_engaged_;
     Eigen::Isometry3d t_robotbase_robottcp_current_;
     Eigen::Isometry3d t_robotbase_robottcp_desired_;
     Eigen::Isometry3d t_robotbase_haptictcp_current_;
@@ -163,6 +177,8 @@ private:
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers_;
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Time stamp_prev_;
+    std::mutex desired_state_mutex_;
+    std::mutex current_state_mutex_;
 };
 
 } // namespace mops_teleop
