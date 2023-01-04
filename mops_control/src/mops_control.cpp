@@ -183,10 +183,11 @@ public:
                 }),
             create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::QoS(1).best_effort(),
                 [this, tool_prefix](sensor_msgs::msg::JointState::ConstSharedPtr m) {
-                    append_yaw0(tool_prefix, *m);
+                    sensor_msgs::msg::JointState m2 = *m;
+                    append_yaw0(tool_prefix, m2);
 
                     // Cache current tool joint angles
-                    for (auto [n, q] : ranges::views::zip(m->name, m->position))
+                    for (auto [n, q] : ranges::views::zip(m2.name, m2.position))
                         *q_current_by_name_[n] = q;
 
                     init_.tool = true;
