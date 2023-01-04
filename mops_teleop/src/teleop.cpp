@@ -66,7 +66,7 @@ public:
             create_subscription<std_msgs::msg::Bool>(
                 "clutch_engaged",
                 10,
-                [this](std_msgs::msg::Bool::UniquePtr m) {
+                [this](std_msgs::msg::Bool::ConstSharedPtr m) {
                     // Initially: desired <- current
                     if (m->data) {
                         t_robotbase_robottcp_desired_ = t_robotbase_robottcp_current_;
@@ -82,7 +82,7 @@ public:
             create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>(
                 "ee_state_current",
                 rclcpp::QoS(1).best_effort(),
-                [this](mops_msgs::msg::ToolEndEffectorStateStamped::UniquePtr m) {
+                [this](mops_msgs::msg::ToolEndEffectorStateStamped::ConstSharedPtr m) {
                     // Cache the most recent end-effector state computed from forward kinematics
                     t_robotbase_robottcp_current_ = convert_to<Eigen::Isometry3d>(m->ee.pose);
                     grasp_current_ = m->ee.grasper_angle;
@@ -92,7 +92,7 @@ public:
             create_subscription<geometry_msgs::msg::PoseStamped>(
                 "haptic_pose",
                 rclcpp::QoS(1).best_effort(),
-                [this](geometry_msgs::msg::PoseStamped::UniquePtr m) {
+                [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr m) {
                     t_robotbase_haptictcp_last_ = std::move(t_robotbase_haptictcp_current_);
 
                     // Transform incoming haptic TCP poses seen wrt. haptic base
@@ -111,7 +111,7 @@ public:
             create_subscription<touch_msgs::msg::ButtonEvent>(
                 "haptic_buttons",
                 10,
-                [this](touch_msgs::msg::ButtonEvent::UniquePtr m) {
+                [this](touch_msgs::msg::ButtonEvent::ConstSharedPtr m) {
                     if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_GRAY)
                         buttons_[0] = (m->event == touch_msgs::msg::ButtonEvent::EVENT_PRESSED);
                     else if (m->button == touch_msgs::msg::ButtonEvent::BUTTON_WHITE)

@@ -174,7 +174,7 @@ public:
 
         subscribers_ = {
             create_subscription<sensor_msgs::msg::JointState>("ur/joint_states", rclcpp::QoS(1).best_effort(),
-                [this](sensor_msgs::msg::JointState::UniquePtr m) {
+                [this](sensor_msgs::msg::JointState::ConstSharedPtr m) {
                     // Cache current UR joint angles
                     for (auto [n, q] : ranges::views::zip(m->name, m->position))
                         *q_current_by_name_[n] = q;
@@ -182,7 +182,7 @@ public:
                     init_.ur = true;
                 }),
             create_subscription<sensor_msgs::msg::JointState>("tool/joint_states", rclcpp::QoS(1).best_effort(),
-                [this, tool_prefix](sensor_msgs::msg::JointState::UniquePtr m) {
+                [this, tool_prefix](sensor_msgs::msg::JointState::ConstSharedPtr m) {
                     append_yaw0(tool_prefix, *m);
 
                     // Cache current tool joint angles
@@ -192,7 +192,7 @@ public:
                     init_.tool = true;
                 }),
             create_subscription<sensor_msgs::msg::JointState>("servo_joint", rclcpp::QoS(1).best_effort(),
-                [this](sensor_msgs::msg::JointState::UniquePtr m) {
+                [this](sensor_msgs::msg::JointState::ConstSharedPtr m) {
                     auto [m_ur, m_tool] = split_joint_state(*m);
 
                     if (!m_ur.name.empty())
@@ -202,7 +202,7 @@ public:
                         pub_tool_servo_joint_->publish(m_tool);
                 }),
             create_subscription<mops_msgs::msg::ToolEndEffectorState>("servo_joint_ik", rclcpp::QoS(1).best_effort(),
-                [this](mops_msgs::msg::ToolEndEffectorState::UniquePtr m) {
+                [this](mops_msgs::msg::ToolEndEffectorState::ConstSharedPtr m) {
                     if (!init_.ur || !init_.tool)
                         return;
 
@@ -214,7 +214,7 @@ public:
                     }
                 }),
             create_subscription<sensor_msgs::msg::JointState>("move_joint", 1,
-                [this](sensor_msgs::msg::JointState::UniquePtr m) {
+                [this](sensor_msgs::msg::JointState::ConstSharedPtr m) {
                     auto [m_ur, m_tool] = split_joint_state(*m);
 
                     if (!m_ur.name.empty())
@@ -224,7 +224,7 @@ public:
                         pub_tool_move_joint_->publish(m_tool);
                 }),
             create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>("move_joint_ik", 1,
-                [this](mops_msgs::msg::ToolEndEffectorStateStamped::UniquePtr m) {
+                [this](mops_msgs::msg::ToolEndEffectorStateStamped::ConstSharedPtr m) {
                     if (!init_.ur || !init_.tool)
                         return;
 
