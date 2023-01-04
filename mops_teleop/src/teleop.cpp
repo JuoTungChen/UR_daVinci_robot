@@ -66,9 +66,8 @@ public:
             create_subscription<std_msgs::msg::Bool>(
                 "clutch_engaged",
                 10,
-                 [this](std_msgs::msg::Bool::UniquePtr m) {
+                [this](std_msgs::msg::Bool::UniquePtr m) {
                     // Initially: desired <- current
-
                     if (m->data) {
                         t_robotbase_robottcp_desired_ = t_robotbase_robottcp_current_;
                         // FIXME: this is not nice because grasper angle computed
