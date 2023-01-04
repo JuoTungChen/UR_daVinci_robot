@@ -73,7 +73,7 @@ def generate_launch_description():
                     name='ur_receiver',
                     namespace='/a/ur',
                     parameters=[{
-                        'hostname': 'ur-20185500393',
+                        'hostname': 'ur-20225502173',
                         'prefix': 'a_ur_',
                     }],
                     extra_arguments=[{'use_intra_process_comms': True}],
@@ -84,7 +84,7 @@ def generate_launch_description():
                     name='ur_controller',
                     namespace='/a/ur',
                     parameters=[{
-                        'hostname': 'ur-20185500393',
+                        'hostname': 'ur-20225502173',
                         'prefix': 'a_ur_',
                         'servo_rate_hz': 125.0,
                     }],
@@ -153,12 +153,12 @@ def generate_launch_description():
                     parameters=[{
                         'publish_rate': 125.0,
                         'ur_prefix': 'a_ur_',
-                        'haptic_prefix': 'touch_left_',
+                        'haptic_prefix': 'touch_right_',
                         'grasp_rate': 1.5708,
                     }],
                     remappings=[
-                        ('haptic_pose', '/touch/left/pose_stylus_current'),
-                        ('haptic_buttons', '/touch/left/button_event'),
+                        ('haptic_pose', '/touch/right/pose_stylus_current'),
+                        ('haptic_buttons', '/touch/right/button_event'),
                         ('clutch_engaged', '/pedal/right'),
                         ('ee_state_desired', 'servo_joint_ik'),
                     ],
@@ -172,12 +172,12 @@ def generate_launch_description():
                     parameters=[{
                         'publish_rate': 125.0,
                         'ur_prefix': 'b_ur_',
-                        'haptic_prefix': 'touch_right_',
+                        'haptic_prefix': 'touch_left_',
                         'grasp_rate': 1.5708,
                     }],
                     remappings=[
-                        ('haptic_pose', '/touch/right/pose_stylus_current'),
-                        ('haptic_buttons', '/touch/right/button_event'),
+                        ('haptic_pose', '/touch/left/pose_stylus_current'),
+                        ('haptic_buttons', '/touch/left/button_event'),
                         ('clutch_engaged', '/pedal/right'),
                         ('ee_state_desired', 'servo_joint_ik'),
                     ],
