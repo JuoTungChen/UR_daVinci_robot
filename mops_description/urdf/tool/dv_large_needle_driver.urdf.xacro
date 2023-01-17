@@ -4,7 +4,11 @@
 <robot name="dv_large_needle_driver" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <!-- End-effector of the LND -->
-  <xacro:macro name="dv_large_needle_driver_tip" params="prefix length" >
+  <xacro:macro name="dv_large_needle_driver_shaft" params="prefix length" >
+    <!-- Distance from where the tool shaft (the dark grey part) meets the tool
+         tip (metallic part) to the roll joint origin -->
+    <xacro:property name="dist_shaft_to_roll_joint" value="0.009" />
+
     <link name="${prefix}rotation">
       <visual>
         <origin xyz="0 0 -0.01" rpy="0 0 ${pi/2}" />
@@ -12,6 +16,15 @@
           <mesh filename="package://mops_description/meshes/lnd_tip/roll.stl" />
         </geometry>
         <material name="tip_metallic_gray" />
+      </visual>
+    </link>
+
+    <link name="${prefix}shaft">
+      <visual>
+        <geometry>
+          <cylinder radius="0.004" length="${length}" />
+        </geometry>
+        <material name="rod_dark_grey" />
       </visual>
     </link>
 
@@ -58,7 +71,7 @@
     <joint name="${prefix}roll" type="revolute">
       <parent link="${prefix}base" />
       <child link="${prefix}rotation" />
-      <origin xyz="${length} 0 0" rpy="${-pi} ${-pi/2} 0" />
+      <origin xyz="${length + dist_shaft_to_roll_joint} 0 0" rpy="${-pi} ${-pi/2} 0" />
       <axis xyz="0 0 1" />
       <limit lower="${radians(-260)}" upper="${radians(260)}" effort="0.3" velocity="${2*pi}" />
     </joint>
@@ -75,6 +88,13 @@
       <parent link="${prefix}wrist" />
       <child link="${prefix}jaw_hinge" />
       <origin xyz="0.0091 0 0" rpy="${pi/2} 0 0" />
+    </joint>
+
+    <!-- asdf -->
+    <joint name="${prefix}shaft_fixed" type="fixed">
+      <parent link="${prefix}rotation" />
+      <child link="${prefix}shaft" />
+      <origin xyz="0 0 ${-length/2 - dist_shaft_to_roll_joint}" rpy="0 0 0" />
     </joint>
 
     <!-- This is not a real physical joint, but rather yaw0 = (yaw1 - yaw2) / 2,
@@ -158,33 +178,17 @@
     <joint name="${prefix}housing_fixed" type="fixed">
       <parent link="${prefix}base" />
       <child link="${prefix}housing" />
-      <origin xyz="-0.015 0 -0.019" rpy="0 0 0" /> <!-- FIXME -->
+      <origin xyz="-0.03 0 -0.02" rpy="0 0 0" />
     </joint>
   </xacro:macro> <!-- dv_large_needle_driver_housing_xi -->
 
 
 
-  <xacro:macro name="dv_large_needle_driver_rod" params="prefix length" >
-    <link name="${prefix}rod">
-      <visual>
-        <geometry>
-          <cylinder radius="0.004" length="${length}" />
-        </geometry>
-        <material name="rod_dark_grey" />
-      </visual>
-    </link>
-
-    <joint name="${prefix}rod_fixed" type="fixed">
-      <parent link="${prefix}rotation" />
-      <child link="${prefix}rod" />
-      <origin xyz="0 0 ${-length/2 - 0.01}" rpy="0 0 0" />
-    </joint>
-  </xacro:macro> <!-- dv_large_needle_driver_rod -->
-
-
-
   <xacro:macro name="dv_large_needle_driver_420006" params="prefix parent *origin">
-    <xacro:property name="length" value="0.4670" />
+    <!-- This number is the visible length of the tool shaft (the dark grey part).
+         Ie. the tool_base frame is placed where the shaft meets the housing).
+         Officially the tool's length is 0.4670m. -->
+    <xacro:property name="length" value="0.4225" />
 
     <link name="${prefix}base" />
 
@@ -194,15 +198,17 @@
       <child link="${prefix}base" />
     </joint>
 
-    <xacro:dv_large_needle_driver_tip prefix="${prefix}" length="${length}" />
-    <xacro:dv_large_needle_driver_rod prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_shaft prefix="${prefix}" length="${length}" />
     <xacro:dv_large_needle_driver_housing_si prefix="${prefix}" />
   </xacro:macro> <!-- dv_large_needle_driver_420006 -->
 
 
 
   <xacro:macro name="dv_large_needle_driver_470006" params="prefix parent *origin">
-    <xacro:property name="length" value="0.5335" />
+    <!-- This number is the visible length of the tool shaft (the dark grey part).
+         Ie. the tool_base frame is placed where the shaft meets the housing).
+         Officially the tool's length is 0.5335m. -->
+    <xacro:property name="length" value="0.5365" />
 
     <link name="${prefix}base" />
 
@@ -212,8 +218,7 @@
       <child link="${prefix}base" />
     </joint>
 
-    <xacro:dv_large_needle_driver_tip prefix="${prefix}" length="${length}" />
-    <xacro:dv_large_needle_driver_rod prefix="${prefix}" length="${length}" />
+    <xacro:dv_large_needle_driver_shaft prefix="${prefix}" length="${length}" />
     <xacro:dv_large_needle_driver_housing_xi prefix="${prefix}" />
   </xacro:macro> <!-- dv_large_needle_driver_470006 -->
 
