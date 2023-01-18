@@ -49,7 +49,7 @@
 
   <!-- B) LND 420006 tool -->
   <xacro:dv_large_needle_driver_420006 prefix="b_tool_" parent="b_ur_flange">
-    <origin xyz="0.127 0 0.053" rpy="${pi} 0 0" /> <!-- Values taken from the tool adapter CAD model -->
+    <origin xyz="0.127 0 -0.053" rpy="${pi} 0 0" /> <!-- Values taken from the tool adapter CAD model -->
   </xacro:dv_large_needle_driver_420006>
 
   <!-- Touch haptic devices -->
