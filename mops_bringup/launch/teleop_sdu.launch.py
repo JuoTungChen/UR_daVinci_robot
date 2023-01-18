@@ -6,7 +6,7 @@ import xacro
 
 
 def generate_mops_urdf():
-    xacro_path = get_package_share_path('mops_description') / 'urdf' / 'mops.urdf.xacro'
+    xacro_path = get_package_share_path('mops_description') / 'urdf' / 'mops_sdu.urdf.xacro'
     # bringup_config_path = get_package_share_path('mops_bringup') / 'config'
     # mappings = {
     #     'world_calib_file': str(bringup_config_path / 'world_calib.yaml'),
