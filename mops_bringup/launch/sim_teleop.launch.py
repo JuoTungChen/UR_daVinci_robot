@@ -6,9 +6,9 @@ import xacro
 
 
 def generate_mops_urdf():
-    xacro_path = get_package_share_path('mops_description') / 'urdf' / 'mops.urdf.xacro'
+    xacro_path = get_package_share_path('mops_description') / 'urdf' / 'mops_sdu.urdf.xacro'
     doc = xacro.process_file(xacro_path)
-    robot_description = doc.toxml()  # doc.toprettyxml(indent='  ')
+    robot_description = doc.toxml()
     return robot_description
 
 
