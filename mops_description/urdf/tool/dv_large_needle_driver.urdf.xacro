@@ -159,7 +159,7 @@
     <joint name="${prefix}housing_fixed" type="fixed">
       <parent link="${prefix}base" />
       <child link="${prefix}housing" />
-      <origin xyz="-0.025 0 0" rpy="0 0 0" /> <!-- FIXME -->
+      <origin xyz="-0.048 0 0" rpy="0 0 0" />
     </joint>
   </xacro:macro> <!-- dv_large_needle_driver_housing_si -->
 
