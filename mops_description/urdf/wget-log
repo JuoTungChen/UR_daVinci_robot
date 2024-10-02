@@ -1,0 +1,11 @@
+--2024-02-23 11:40:15--  https://packages.microsoft.com/keys/microsoft.asc
+Resolving packages.microsoft.com (packages.microsoft.com)... 13.90.56.68
+Connecting to packages.microsoft.com (packages.microsoft.com)|13.90.56.68|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 983 [application/octet-stream]
+Saving to: ‘STDOUT’
+
+-                                  0%[                                                         ]       0  --.-KB/s               -                                  0%[                                                         ]       0  --.-KB/s    in 0s      
+
+
+Cannot write to ‘-’ (Success).
