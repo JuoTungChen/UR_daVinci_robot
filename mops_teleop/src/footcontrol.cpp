@@ -43,7 +43,7 @@ public:
         }
 
         setLayout(layout);
-        resize(800, 500);
+        resize(300, 180);
     }
 
 private:

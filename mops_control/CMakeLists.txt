@@ -13,12 +13,13 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(mops_msgs REQUIRED)
 find_package(mops_common REQUIRED)
+find_package(rcm REQUIRED)
 
 add_library(mops_control SHARED src/mops_control.cpp)
 target_compile_features(mops_control PUBLIC cxx_std_17)
 ament_target_dependencies(mops_control
   rclcpp rclcpp_components urdf geometry_msgs sensor_msgs mops_msgs
-  Eigen3 range-v3 orocos_kdl urdfdom_headers kdl_parser mops_common)
+  Eigen3 range-v3 orocos_kdl urdfdom_headers kdl_parser mops_common rcm)
 target_compile_options(mops_control PRIVATE -Wall -Wextra)
 rclcpp_components_register_nodes(mops_control "mops_control::MopsControlNode")
 

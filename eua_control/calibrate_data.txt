@@ -1,0 +1,2 @@
+Set calibration offset (in servo space) to: [254.98901099 359.73626374 -23.37314859  19.26421405] deg
+set rcm point as: 0.417128 -0.315042 0.377304

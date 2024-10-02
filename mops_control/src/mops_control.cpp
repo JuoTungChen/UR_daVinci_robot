@@ -1,4 +1,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/pose.hpp>
+
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "mops_msgs/msg/tool_end_effector_state_stamped.hpp"
 #include "mops_common/conversions/kdl.hpp"
@@ -19,6 +21,8 @@
 
 #include <optional>
 
+#include <rcm/RCMSolver.hpp>
+
 using namespace std::string_literals;
 
 namespace mops_control {
@@ -28,6 +32,63 @@ struct Init
     bool ur;
     bool tool;
 };
+
+KDL::JntArray 
+VectorToJnt(const Eigen::VectorXd& eigen_vector,int size) {
+    KDL::JntArray jnt_array(size);
+
+    for (int i = 0; i < size; ++i) {
+        jnt_array(i) = eigen_vector(i);
+    }
+
+    return jnt_array;
+}
+
+Eigen::VectorXd
+JntToVector(const KDL::JntArray& jnt_array, int size) {
+    Eigen::VectorXd eigen_vector(size);
+    for (int i = 0; i < size; ++i) {
+        eigen_vector(i) = jnt_array(i);
+    }
+    return eigen_vector;
+}
+
+geometry_msgs::msg::Pose 
+FrameToPoseMsg(const KDL::Frame& frame)
+{
+    geometry_msgs::msg::Pose pose_msg;
+
+    // Extract translation components
+    pose_msg.position.x = frame.p.x();
+    pose_msg.position.y = frame.p.y();
+    pose_msg.position.z = frame.p.z();
+
+    // Extract orientation components
+    double qx, qy, qz, qw;
+    frame.M.GetQuaternion(qx, qy, qz, qw);
+    pose_msg.orientation.x = qx;
+    pose_msg.orientation.y = qy;
+    pose_msg.orientation.z = qz;
+    pose_msg.orientation.w = qw;
+
+    return pose_msg;
+}
+
+KDL::Frame 
+PoseMsgToFrame(const geometry_msgs::msg::Pose& pose_msg)
+{
+    // Extract translation components
+    KDL::Vector translation(pose_msg.position.x, pose_msg.position.y, pose_msg.position.z);
+
+    // Extract orientation components
+    KDL::Rotation orientation;
+    orientation.Quaternion(pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w);
+
+    // Construct KDL::Frame
+    KDL::Frame frame(orientation, translation);
+    
+    return frame;
+}
 
 void append_yaw0(const std::string& prefix, sensor_msgs::msg::JointState& m)
 {
@@ -77,7 +138,16 @@ public:
         : rclcpp::Node("mops_control", options)
     {
         auto xml = declare_parameter("robot_description", ""s);
-
+        double k_task = declare_parameter("k_task", 1.5);
+        double k_rcm = declare_parameter("k_rcm", 5.0);
+        double k_p = declare_parameter("k_p", 1.0);
+        double k_pos = declare_parameter("k_pos", 1.5);
+        double k_ori = declare_parameter("k_ori", 1.5);
+        double dt__ = declare_parameter("dt", 0.2);
+        double thres = declare_parameter("thres", 1e-3);
+        int max_iter__ = declare_parameter("max_iter", 1);
+        double offset_ = declare_parameter("offset", 0.0);
+        
         if (xml.empty())
             throw std::runtime_error("The 'robot_description' parameter is empty");
 
@@ -90,6 +160,7 @@ public:
 
         const auto ur_prefix = declare_parameter("ur_prefix", ""s);
         const auto tool_prefix = declare_parameter("tool_prefix", ""s);
+        enable_rcm = declare_parameter("enable_rcm", false);
         // TODO: std::vector<std::string> ur_joint_names;
 
         for (const auto& name : {"roll", "pitch", "yaw1", "yaw2"})
@@ -162,14 +233,14 @@ public:
         // Map to q_current by joint name
         for (const auto& [i, joint] : movable_joints | ranges::views::enumerate)
             q_current_by_name_.insert({joint->getName(), &q_current_(i)});
-
+        
         // Also map grasper joint states (yaw1, yaw2) that are not part of 'chain'
         q_current_by_name_.insert({tool_joint_names_[2], &q_yaw_dummy_[0]});
         q_current_by_name_.insert({tool_joint_names_[3], &q_yaw_dummy_[1]});
 
-        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint_default", 1);
+        pub_robot_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/move_joint", 1);
         pub_tool_move_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/move_joint", 1);
-        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint_default", 1);
+        pub_robot_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("ur/servo_joint", 1);
         pub_tool_servo_joint_ = create_publisher<sensor_msgs::msg::JointState>("tool/servo_joint", 1);
 
         subscribers_ = {
@@ -207,11 +278,27 @@ public:
                     if (!init_.ur || !init_.tool)
                         return;
 
-                    auto sol = get_ik_solution(convert_to<KDL::Frame>(m->pose), m->grasper_angle);
+                    if (!initialized){
+                        rcm_solver = std::make_shared<RCM::RCMSolver>(shared_from_this(), "robot_description");
 
-                    if (sol) {
-                        pub_robot_servo_joint_->publish(sol->first);
-                        pub_tool_servo_joint_->publish(sol->second);
+                        Eigen::VectorXd q_vec = JntToVector(q_current_, chain_.getNrOfJoints());
+                        rcm_solver->setDefaultRCM(q_vec);
+                        initialized = true;
+                    }
+                    
+                    if (enable_rcm){
+                        auto sol = get_ik_solution_rcm(convert_to<KDL::Frame>(m->pose), m->grasper_angle, rcm_pose_);
+                        if (sol) {
+                            pub_robot_servo_joint_->publish(sol->first);
+                            pub_tool_servo_joint_->publish(sol->second);
+                        }
+                    }
+                    else{
+                        auto sol = get_ik_solution(convert_to<KDL::Frame>(m->pose), m->grasper_angle);
+                        if (sol) {
+                            pub_robot_servo_joint_->publish(sol->first);
+                            pub_tool_servo_joint_->publish(sol->second);
+                        }
                     }
                 }),
             create_subscription<sensor_msgs::msg::JointState>("move_joint", 1,
@@ -235,6 +322,10 @@ public:
                         pub_robot_move_joint_->publish(sol->first);
                         pub_tool_move_joint_->publish(sol->second);
                     }
+                }),
+            create_subscription<geometry_msgs::msg::Pose>("rcm_pose", rclcpp::QoS(1).best_effort(),
+                [this](geometry_msgs::msg::Pose m) {
+                    rcm_pose_ = m;
                 }),
         };
     }
@@ -282,7 +373,54 @@ public:
         return std::make_pair(m_robot, m_tool);
     }
 
+    std::optional<std::pair<sensor_msgs::msg::JointState, sensor_msgs::msg::JointState>>
+    get_ik_solution_rcm(const KDL::Frame& pose_desired, double grasp_desired, const geometry_msgs::msg::Pose& rcm_pose)
+    {
+        // If q_current and q_desired (the previous IK solution) are close,
+        // we use q_desired as the seed for the IK algorithm
+        auto q_init = ((q_desired_.data - q_current_.data).norm() > math::pi / 8) ? q_current_ : q_desired_;
+
+        // initialize q_vec and q_new
+        Eigen::VectorXd q_vec = JntToVector(q_init, chain_.getNrOfJoints());   // convert JntArrary to VectorXd
+        Eigen::VectorXd q_new(9);
+
+        geometry_msgs::msg::Pose target_pose = FrameToPoseMsg(pose_desired);   // convert KDL::Frame to pose msg
+
+        rcm_solver->setDesiredPose(target_pose); // retrieve target_pose from geometery_msgs
+        q_new = rcm_solver->solveIK(q_vec);
+
+        q_desired_ = VectorToJnt(q_new, 9);      // convert VectorXd (q_new) back to JntArrary (q_desired_)
+
+        // yaw1, yaw2 configuration given a desired grasper opening angle
+        double q_yaw1 = q_desired_(8) + grasp_desired / 2;
+        double q_yaw2 = -q_desired_(8) + grasp_desired / 2;
+
+        // Enforce joint limits for yaw1, yaw2
+        const auto& lim_yaw1 = joint_limits_.at(tool_joint_names_[2]);
+        q_yaw1 = std::clamp(q_yaw1, lim_yaw1.lower, lim_yaw1.upper);
+        const auto& lim_yaw2 = joint_limits_.at(tool_joint_names_[3]);
+        q_yaw2 = std::clamp(q_yaw2, lim_yaw2.lower, lim_yaw2.upper);
+
+        // The first 6 elements of the solution vector is the robot configuration
+        sensor_msgs::msg::JointState m_robot;
+        m_robot.header.stamp = now();
+        m_robot.position |= ranges::actions::push_back(ranges::span{q_desired_.data.data(), 6});
+
+        // and the last 4 is the tool configuration
+        sensor_msgs::msg::JointState m_tool;
+        m_tool.header.stamp = m_robot.header.stamp;
+        m_tool.name = tool_joint_names_;
+        m_tool.position.push_back(q_desired_(6)); // roll
+        m_tool.position.push_back(q_desired_(7)); // pitch (wrist)
+        m_tool.position.push_back(q_yaw1);        // yaw1 (jaw1)
+        m_tool.position.push_back(q_yaw2);        // yaw2 (jaw2)
+
+        return std::make_pair(m_robot, m_tool);
+    }
+
+
 private:
+    bool initialized = false;
     urdf::Model model_;
     KDL::Tree tree_;
     KDL::Chain chain_;
@@ -293,14 +431,17 @@ private:
     std::unique_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
     std::unique_ptr<KDL::ChainIkSolverVel_wdls> ik_solver_vel_;
     std::unique_ptr<KDL::ChainIkSolverPos_NR_JL> ik_solver_pos_;
-
+    std::shared_ptr<RCM::RCMSolver> rcm_solver;
     // Current joint state (from robot/tool drivers)
     KDL::JntArray q_current_;
     KDL::JntArray q_desired_;
     std::array<double, 2> q_yaw_dummy_; // grasper joints (yaw1, yaw2) are not part of 'chain'
-
+    bool enable_rcm;
     // State signals
     Init init_;
+
+    // rcm constraint pose
+    geometry_msgs::msg::Pose rcm_pose_;
 
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_robot_move_joint_;

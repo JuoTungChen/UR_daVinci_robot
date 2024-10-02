@@ -10,7 +10,7 @@ import threading
 import dynamixel
 import time
 import array
-
+import json
 
 class MyJointState:
     def __init__(self, stamp=None, name=None, position=None, velocity=None, effort=None):
@@ -89,7 +89,7 @@ class EUAController(rclpy.node.Node):
         super().__init__('eua_controller', allow_undeclared_parameters=True, automatically_declare_parameters_from_overrides=True)
         self.loop_rate_hz = 100.0
         self.simulated = self.get_parameter('simulated').value
-
+        self.calibration_file  = '/home/justin/mops_ws/src/mops_core/eua_control/config/calibration.json'
         # We order the supplied device ID's according to this sequence of joint
         # names which corresponds to the kinematic chain
         self.eua_type = self.get_parameter('type').value
@@ -151,8 +151,8 @@ class EUAController(rclpy.node.Node):
 
             if self.device_ids != tuple(dev.id for dev in self.chain.devices):
                 raise RuntimeError("Device IDs mismatch")
-
-            self.set_servo_calibration_offset(np.array(self.declare_parameter('servo_calibration_offset', [0.0, 0.0, 0.0, 0.0]).value))
+            self.load_calibration_offset()
+            # self.set_servo_calibration_offset(np.array(self.declare_parameter('servo_calibration_offset', [0.0, 0.0, 0.0, 0.0]).value))
 
             for dev in self.chain.devices:
                 if isinstance(dev, dynamixel.device.MX28):
@@ -187,6 +187,31 @@ class EUAController(rclpy.node.Node):
         self.tg.target_velocity.fill(0)
 
         self.trajectory = None
+
+    def load_calibration_offset(self):
+        # Load JSON file
+        with open(self.calibration_file, 'r') as f:
+            data = json.load(f)
+
+        # Extract servo_calibration_offset from JSON data
+        servo_calibration_offset = data.get('servo_calibration_offset', [0.0, 0.0, 0.0, 0.0])
+        # Convert to numpy array and set as servo calibration offset
+        self.set_servo_calibration_offset(np.array(servo_calibration_offset))
+
+    def write_calibration_offset(self, offset):
+
+        # Update JSON data with new calibration offset
+        with open(self.calibration_file, 'r') as f:
+            data = json.load(f)
+
+        data['servo_calibration_offset'] = offset.tolist()  # Convert numpy array to list for JSON serialization
+
+        # Write updated JSON data back to file
+        with open(self.calibration_file, 'w') as f:
+            json.dump(data, f, indent=4)  # Write formatted JSON data with indentation
+
+        # Optionally, you can print a message to indicate that the JSON file has been updated
+        print("Calibration offset updated and saved to JSON file.")
 
     def set_servo_calibration_offset(self, calibration_offset):
         if self.trajectory is not None:
@@ -559,7 +584,7 @@ class EUACalibrator(object):
                 self.c.stop_trajectory_hard()
 
             # Move back to the initial position
-            self.set_tg_limits_orig()
+            # self.set_tg_limits_orig()
             self.c.init_trajectory(MyJointState(name=[self.c.joint_names[j]], position=[self.initial_joint_state.position[j]]))
             self.wait_for_controller_trajectory_end()
             self.set_tg_limits_safe()
@@ -568,8 +593,8 @@ class EUACalibrator(object):
             detected_positions_in_servo_space[j] = limits[0] + (limits[1] - limits[0]) / 2
 
         self.c.set_servo_calibration_offset(np.array(detected_positions_in_servo_space) - reference_positions_in_servo_space)
-
+        self.c.write_calibration_offset((np.array(detected_positions_in_servo_space) - reference_positions_in_servo_space))
         # Move joints to home position
-        self.set_tg_limits_orig()
         home_position = np.radians([0, 0, 30, 30])  # FIXME: hard coded values
         self.c.init_trajectory(MyJointState(name=self.c.joint_names, position=home_position.tolist()))
+        self.set_tg_limits_orig()

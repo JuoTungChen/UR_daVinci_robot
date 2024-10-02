@@ -17,6 +17,7 @@
   <depend>sensor_msgs</depend>
   <depend>mops_msgs</depend>
   <depend>mops_common</depend>
+  <depend>rcm</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

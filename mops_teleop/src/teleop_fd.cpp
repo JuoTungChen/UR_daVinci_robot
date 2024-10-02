@@ -3,6 +3,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/empty.hpp"
 #include "touch_msgs/msg/button_event.hpp"
 #include "mops_msgs/msg/tool_end_effector_state_stamped.hpp"
 #include "tf2_ros/buffer.h"
@@ -12,6 +13,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
+#include "sensor_msgs/msg/joint_state.hpp"
 
 #include <Eigen/Geometry>
 
@@ -28,14 +30,13 @@ auto sec_to_dur(T seconds) {
     return std::chrono::duration<T, std::ratio<1>>(seconds);
 }
 
-class TeleopNode : public rclcpp::Node
+class TeleopNodeFD : public rclcpp::Node
 {
 public:
-    explicit TeleopNode(const rclcpp::NodeOptions& options)
+    explicit TeleopNodeFD(const rclcpp::NodeOptions& options)
         : rclcpp::Node("teleop", options)
         , init_current_(false)
         , clutch_engaged_(false)
-        , rotation_tracking_engaged_(false)
         , t_robotbase_robottcp_current_(Eigen::Isometry3d::Identity())
         , t_robotbase_robottcp_desired_(t_robotbase_robottcp_current_)
         // , t_robotbase_robottcp_desired_new(t_robotbase_robottcp_current_)
@@ -46,6 +47,7 @@ public:
         , grasp_current_(math::radians(60))
         , grasp_desired_(grasp_current_)
         , grasp_rate_(math::pi / 4)
+        , holding(true)
     {
         auto robot_base = declare_parameter("ur_prefix", ""s) + "base_link";
         auto haptic_base = declare_parameter("haptic_prefix", ""s) + "base";
@@ -69,6 +71,8 @@ public:
 
         pub_ee_desired_ = create_publisher<mops_msgs::msg::ToolEndEffectorState>("ee_state_desired", 1);
         pub_t_incr_ = create_publisher<geometry_msgs::msg::Pose>("haptic_stylus_increment", 1);
+        pub_free_fd = create_publisher<std_msgs::msg::Empty>("/omega_7__right_hand_00/free", 1);
+        pub_hold_fd = create_publisher<std_msgs::msg::Empty>("/omega_7__right_hand_00/hold", 1);
 
         subscribers_ = {
             create_subscription<std_msgs::msg::Bool>(
@@ -89,19 +93,21 @@ public:
                 }
             ),
             create_subscription<std_msgs::msg::Bool>(
-                "rotation_tracking_engaged",
+                "free_fd",
                 10,
                 [this](std_msgs::msg::Bool::ConstSharedPtr m) {
                     // Initially: desired <- current
                     if (m->data) {
-                        // t_robotbase_robottcp_desired_.rotate(t_robotbase_robottcp_current_.rotation());
-                        t_robotbase_robottcp_desired_ = t_robotbase_robottcp_current_;
-                        // t_robotbase_robottcp_desired_new = t_robotbase_robottcp_current_;
-
-                        rotation_tracking_engaged_ = true;
-                    } else {
-                        rotation_tracking_engaged_ = false;
-                    }
+                        auto empty_msg = std_msgs::msg::Empty();
+                        if (holding){
+                            pub_free_fd->publish(empty_msg);
+                            holding = false;
+                        }
+                        else if(!holding){
+                            pub_hold_fd->publish(empty_msg);
+                            holding = true;
+                        }
+                    } 
                 }
             ),
             create_subscription<mops_msgs::msg::ToolEndEffectorStateStamped>(
@@ -149,20 +155,6 @@ public:
                         // Apply rotation of t_incr directly to the rotation of t_robotbase_robottcp_desired_
                         t_robotbase_robottcp_desired_.rotate(rotation);
 
-                        // Convert Eigen vectors to ROS geometry messages
-                        // pose_msg.position.x = translation.x();
-                        // pose_msg.position.y = translation.y();
-                        // pose_msg.position.z = translation.z();
-
-                        // pose_msg.orientation.x = rotation.x();
-                        // pose_msg.orientation.y = rotation.y();
-                        // pose_msg.orientation.z = rotation.z();
-                        // pose_msg.orientation.w = rotation.w();
-
-                        // Print out the values
-                        // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", translation_msg.x, translation_msg.y, translation_msg.z);
-                        // RCLCPP_INFO("t_incr translation: (%f, %f, %f)", translation_msg.x, translation_msg.y, translation_msg.z);
-                        // RCLCPP_INFO("t_incr rotation: (x: %f, y: %f, z: %f, w: %f)", rotation_msg.x, rotation_msg.y, rotation_msg.z, rotation_msg.w);
                     }
                 }
             ),
@@ -176,13 +168,14 @@ public:
                         buttons_[1] = (m->event == touch_msgs::msg::ButtonEvent::EVENT_PRESSED);
                 }
             ),
-            create_subscription<std_msgs::msg::Float64>(
-                "grasp_angle",
+            create_subscription<sensor_msgs::msg::JointState>(
+                "/omega_7__right_hand_00/gripper/measured_js",
                 10,
-                [this](std_msgs::msg::Float64::ConstSharedPtr m) {
-                    grasp_desired_ = m->data ;
+                [this](sensor_msgs::msg::JointState::ConstSharedPtr m) {
+                    grasp_desired_ = 4.0 * m->position[0];
                 }
             ),
+
         };
 
         stamp_prev_ = now();
@@ -216,7 +209,7 @@ public:
 private:
     bool init_current_;
     bool clutch_engaged_;
-    bool rotation_tracking_engaged_;
+    bool holding;
     Eigen::Isometry3d t_robotbase_robottcp_current_;
     Eigen::Isometry3d t_robotbase_robottcp_desired_;
     // Eigen::Isometry3d t_robotbase_robottcp_desired_new;
@@ -231,6 +224,8 @@ private:
     double grasp_rate_;
     rclcpp::Publisher<mops_msgs::msg::ToolEndEffectorState>::SharedPtr pub_ee_desired_;
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr pub_t_incr_;
+    rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_free_fd;
+    rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_hold_fd;
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers_;
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Time stamp_prev_;
@@ -239,4 +234,4 @@ private:
 } // namespace mops_teleop
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(mops_teleop::TeleopNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(mops_teleop::TeleopNodeFD)

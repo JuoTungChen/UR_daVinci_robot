@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+
+        <executable
+        cmd="ros2 topic pub -1 /b/tool/move_joint sensor_msgs/msg/JointState &quot;&apos;{name: [b_tool_roll, b_tool_pitch, b_tool_yaw1, b_tool_yaw2], position: [0.0, 0.0, 0.5, -0.2], velocity: [], effort: []}&apos;&quot;"  
+        cwd="./"
+        shell="true">
+        
+        </executable>
+
+        <executable
+        cmd="ros2 topic pub -1 /b/ur/move_joint sensor_msgs/msg/JointState &quot;&apos;{name: [b_ur_shoulder_pan_joint, b_ur_shoulder_lift_joint, b_ur_elbow_joint, b_ur_wrist_1_joint, b_ur_wrist_2_joint, b_ur_wrist_3_joint], position: [0.72, -1.46, -1.17, -1.95, -0.016, 4.60], velocity: [], effort: []}&apos;&quot;"  
+        cwd="./"
+        shell="true">
+        
+        </executable>
+
+</launch>

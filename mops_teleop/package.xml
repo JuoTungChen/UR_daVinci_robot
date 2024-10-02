@@ -13,6 +13,7 @@
   <depend>mops_common</depend>
   <depend>mops_msgs</depend>
   <depend>touch_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>tf2_ros</depend>
 
   <export>

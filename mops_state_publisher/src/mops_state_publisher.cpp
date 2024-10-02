@@ -298,27 +298,27 @@ int main(int argc, char* argv[])
         throw std::runtime_error("Failed to construct KDL tree from URDF model");
 
     RobotStatePublisher robot_state_publisher(node, tree);
-    PoseGraspPublisher pose_pub_a(node, "a", tree);
+    // PoseGraspPublisher pose_pub_a(node, "a", tree);
     PoseGraspPublisher pose_pub_b(node, "b", tree);
 
     auto pub_descr = node->create_publisher<std_msgs::msg::String>("robot_description", rclcpp::QoS(1).transient_local());
 
     std::list<rclcpp::SubscriptionBase::SharedPtr> subscribers {
-        node->create_subscription<sensor_msgs::msg::JointState>(
-            "/a/ur/joint_states",
-            rclcpp::QoS(1).best_effort(),
-            [&](const sensor_msgs::msg::JointState& m) {
-                robot_state_publisher.updateJointPositions(m);
-                pose_pub_a.updateJointPositions(m);
-            }),
-        node->create_subscription<sensor_msgs::msg::JointState>(
-            "/a/tool/joint_states",
-            rclcpp::QoS(1).best_effort(),
-            [&](sensor_msgs::msg::JointState m) {
-                appendYaw0("a_tool_", m);
-                robot_state_publisher.updateJointPositions(m);
-                pose_pub_a.updateJointPositions(m);
-            }),
+        // node->create_subscription<sensor_msgs::msg::JointState>(
+        //     "/a/ur/joint_states",
+        //     rclcpp::QoS(1).best_effort(),
+        //     [&](const sensor_msgs::msg::JointState& m) {
+        //         robot_state_publisher.updateJointPositions(m);
+        //         pose_pub_a.updateJointPositions(m);
+        //     }),
+        // node->create_subscription<sensor_msgs::msg::JointState>(
+        //     "/a/tool/joint_states",
+        //     rclcpp::QoS(1).best_effort(),
+        //     [&](sensor_msgs::msg::JointState m) {
+        //         appendYaw0("a_tool_", m);
+        //         robot_state_publisher.updateJointPositions(m);
+        //         pose_pub_a.updateJointPositions(m);
+        //     }),
         node->create_subscription<sensor_msgs::msg::JointState>(
             "/b/ur/joint_states",
             rclcpp::QoS(1).best_effort(),
@@ -342,10 +342,10 @@ int main(int argc, char* argv[])
             sec_to_dur(1.0 / node->declare_parameter("tf_publish_frequency", 50.0)),
             [&robot_state_publisher, node]() { robot_state_publisher.publishTransforms(node); }
         ),
-        node->create_wall_timer(
-            sec_to_dur(1.0 / ee_publish_frequency),
-            [&pose_pub_a, node]() { pose_pub_a.publish(node); }
-        ),
+        // node->create_wall_timer(
+        //     sec_to_dur(1.0 / ee_publish_frequency),
+        //     [&pose_pub_a, node]() { pose_pub_a.publish(node); }
+        // ),
         node->create_wall_timer(
             sec_to_dur(1.0 / ee_publish_frequency),
             [&pose_pub_b, node]() { pose_pub_b.publish(node); }

@@ -9,7 +9,7 @@
   <!-- <url type="website"></url> -->
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-
+  <depend>teleop_trigger</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>
